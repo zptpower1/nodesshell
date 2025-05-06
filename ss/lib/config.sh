@@ -1,7 +1,7 @@
 #!/bin/bash
 #配置管理模块
 
-source "$(dirname "$0")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 验证配置文件
 function validate_config() {
