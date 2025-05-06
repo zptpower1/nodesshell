@@ -29,13 +29,17 @@ function install_shadowsocks() {
   chown shadowsocks:shadowsocks "$LOG_DIR" || true
   chmod 755 "$LOG_DIR"
 
+  # 让用户末端口号，提供默认值
+  read -p "请输入服务器端口号（默认: 8388）: " SERVER_PORT
   SERVER_PORT=${SERVER_PORT:-8388}
   echo "📌 使用端口: $SERVER_PORT"
 
+  read -p "请输入本地端口号（默认: 2080）: " LOCAL_PORT
   LOCAL_PORT=${LOCAL_PORT:-2080}
   echo "📌 使用本地端口: $LOCAL_PORT"
 
   echo "可用加密方法: aes-256-gcm, chacha20-ietf-poly1305, aes-128-gcm"
+  read -p "请输入加密方法（默认: chacha20-ietf-poly1305）: " METHOD
   METHOD=${METHOD:-chacha20-ietf-poly1305}
   echo "📌 加密方法: $METHOD"
 
