@@ -5,6 +5,11 @@ SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
 # 加载所有模块
 source "$SCRIPT_DIR/lib/utils.sh"
+
+# 检查环境文件
+load_env
+
+# 加载其他模块
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/service.sh"
 source "$SCRIPT_DIR/lib/user.sh"

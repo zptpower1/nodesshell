@@ -42,31 +42,22 @@ function ensure_ss_user() {
 
 # 加载环境变量
 function load_env() {
-  if [[ -f "$ENV_FILE" ]]; then
-    source "$ENV_FILE"
-    if [[ -n "$NODENAME" ]]; then
-      echo "📌 从 .env 文件读取节点名称: $NODENAME"
-    fi
-    if [[ -n "$NODEDOMAIN" ]]; then
-      echo "📌 从 .env 文件读取节点域名: $NODEDOMAIN"
-    fi
+  if [[ ! -f "$ENV_FILE" ]]; then
+    echo "❌ 错误：未找到 .env 文件，该文件必须存在于脚本同级目录。"
+    echo "请创建 .env 文件并配置以下内容："
+    echo "NODENAME=your-node-name"
+    echo "NODEDOMAIN=your-domain.com (可选)"
+    exit 1
   fi
+
+  source "$ENV_FILE"
   if [[ -z "$NODENAME" ]]; then
-    echo "⚠️ 未找到 NODENAME 设置。"
-    while true; do
-      read -p "请输入节点名称（不能为空）: " NODENAME
-      if [[ -n "$NODENAME" ]]; then
-        echo "📌 设置节点名称: $NODENAME"
-        if [[ -n "$NODEDOMAIN" ]]; then
-          echo "NODENAME=$NODENAME" > "$ENV_FILE"
-          echo "NODEDOMAIN=$NODEDOMAIN" >> "$ENV_FILE"
-        else
-          echo "NODENAME=$NODENAME" > "$ENV_FILE"
-        fi
-        break
-      else
-        echo "❌ 节点名称不能为空，请重新输入。"
-      fi
-    done
+    echo "❌ 错误：.env 文件中必须设置 NODENAME 变量。"
+    exit 1
+  fi
+
+  echo "📌 从 .env 文件读取节点名称: $NODENAME"
+  if [[ -n "$NODEDOMAIN" ]]; then
+    echo "📌 从 .env 文件读取节点域名: $NODEDOMAIN"
   fi
 }
