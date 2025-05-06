@@ -9,7 +9,7 @@ LOG_DIR="/var/log/shadowsocks"
 SS_BIN="/usr/bin/ss-server"
 SERVICE_NAME="shadowsocks"
 SERVICE_FILE="/etc/systemd/system/shadowsocks.service"
-SCRIPT_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
 
 # 检查root权限
