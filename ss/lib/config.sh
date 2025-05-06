@@ -54,7 +54,7 @@ function print_client_info() {
   echo "    server: $ADD"
   echo "    port: $PORT"
   echo "    cipher: $METHOD"
-  echo "    password: \"$PASSWORD\""
+  echo "    password: $PASSWORD"
 
   # 生成 SS 链接和二维码
   CONFIG="$METHOD:$PASSWORD@$ADD:$PORT"
