@@ -29,21 +29,36 @@ function install_shadowsocks() {
   chown shadowsocks:shadowsocks "$LOG_DIR" || true
   chmod 755 "$LOG_DIR"
 
-  read -p "请输入 Shadowsocks 服务端口 [默认: 8388]: " SERVER_PORT
+  # 创建默认的 admin 用户
   SERVER_PORT=${SERVER_PORT:-8388}
-  echo "📌 使用服务端口: $SERVER_PORT"
+  echo "📌 使用管理员端口: $SERVER_PORT"
 
-  read -p "请输入 Shadowsocks 本地端口 [默认: 2080]: " LOCAL_PORT
   LOCAL_PORT=${LOCAL_PORT:-2080}
   echo "📌 使用本地端口: $LOCAL_PORT"
 
   echo "可用加密方法: aes-256-gcm, chacha20-ietf-poly1305, aes-128-gcm"
-  read -p "请输入加密方法 [默认: chacha20-ietf-poly1305]: " METHOD
   METHOD=${METHOD:-chacha20-ietf-poly1305}
   echo "📌 加密方法: $METHOD"
 
   PASSWORD=$(cat /proc/sys/kernel/random/uuid)
-  echo "📌 自动生成密码: $PASSWORD"
+  echo "📌 管理员密码: $PASSWORD"
+
+  # 创建用户配置文件
+  echo "📌 创建用户配置文件..."
+  cat > "$USERS_PATH" <<EOF
+{
+  "users": {
+    "admin": {
+      "port": $SERVER_PORT,
+      "password": "$PASSWORD",
+      "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+      "description": "默认管理员账户"
+    }
+  }
+}
+EOF
+  chown root:shadowsocks "$USERS_PATH" || true
+  chmod 644 "$USERS_PATH"
 
   echo "请选择 IP 协议支持："
   echo "1) 仅 IPv4"
