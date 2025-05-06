@@ -38,10 +38,17 @@ function install_shadowsocks() {
   LOCAL_PORT=${LOCAL_PORT:-2080}
   echo "📌 使用本地端口: $LOCAL_PORT"
 
-  echo "可用加密方法: aes-256-gcm, chacha20-ietf-poly1305, aes-128-gcm"
-  read -p "请输入加密方法（默认: chacha20-ietf-poly1305）: " METHOD
-  METHOD=${METHOD:-chacha20-ietf-poly1305}
-  echo "📌 加密方法: $METHOD"
+  echo "请选择加密方法："
+  echo "1) aes-256-gcm"
+  echo "2) chacha20-ietf-poly1305 [默认]"
+  echo "3) aes-128-gcm"
+  read -p "请输入选项 [1-3]: " METHOD_OPTION
+  case "$METHOD_OPTION" in
+    1) METHOD="aes-256-gcm"; echo "📌 加密方法: aes-256-gcm" ;;
+    2) METHOD="chacha20-ietf-poly1305"; echo "📌 加密方法: chacha20-ietf-poly1305" ;;
+    3) METHOD="aes-128-gcm"; echo "📌 加密方法: aes-128-gcm" ;;
+    *) METHOD="chacha20-ietf-poly1305"; echo "📌 使用默认加密方法: chacha20-ietf-poly1305" ;;
+  esac
 
   PASSWORD=$(cat /proc/sys/kernel/random/uuid)
   echo "📌 密码: $PASSWORD"
