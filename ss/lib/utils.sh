@@ -4,7 +4,7 @@
 # 通用变量
 SSBASE_PATH="/usr/local/etc/shadowsocks"
 CONFIG_PATH="$SSBASE_PATH/config.json"
-USERS_PATH="$SSBASE_PATH/users.json"
+#USERS_PATH="$SSBASE_PATH/users.json"
 BACKUP_DIR="$SSBASE_PATH/backup"
 LOG_DIR="/var/log/shadowsocks"
 SS_BIN="/usr/bin/ss-server"
