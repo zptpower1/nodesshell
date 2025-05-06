@@ -1,9 +1,9 @@
 #!/bin/bash
 #用户管理模块
 
-source "$(dirname "$0")/utils.sh"
-source "$(dirname "$0")/config.sh"
-source "$(dirname "$0")/service.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/service.sh"
 
 # 列出用户
 function list_users() {

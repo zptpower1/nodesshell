@@ -1,7 +1,7 @@
 #!/bin/bash
 #服务管理模块
 
-source "$(dirname "$0")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 启动服务
 function start_service() {
