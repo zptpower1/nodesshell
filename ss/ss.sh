@@ -12,7 +12,6 @@ load_env
 # 加载其他模块
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/service.sh"
-source "$SCRIPT_DIR/lib/user.sh"
 source "$SCRIPT_DIR/lib/install.sh"
 
 # 参数分发入口
@@ -25,19 +24,6 @@ case "$1" in
     ;;
   uninstall)
     uninstall_shadowsocks
-    ;;
-  add)
-    add_user
-    ;;
-  del)
-    delete_user
-    ;;
-  list)
-    if [[ -n "$2" ]]; then
-      list_users "$2"
-    else
-      list_users
-    fi
     ;;
   start)
     start_service
@@ -60,22 +46,12 @@ case "$1" in
   logs)
     logs_service
     ;;
-  query)
-    if [[ -n "$2" ]]; then
-      query_user_info "$2"
-    else
-      query_user_info
-    fi
-    ;;
   *)
-    echo "❌ 参数错误！可用命令：install / upgrade / uninstall / add / del / list / start / stop / restart / enable / disable / status / logs / query"
+    echo "❌ 参数错误！可用命令：install / upgrade / uninstall / start / stop / restart / enable / disable / status / logs"
     echo "使用示例："
     echo "  ./ss.sh install     # 安装并覆盖配置"
     echo "  ./ss.sh upgrade     # 升级核心，保留配置"
     echo "  ./ss.sh uninstall   # 卸载"
-    echo "  ./ss.sh add         # 设置新用户密码"
-    echo "  ./ss.sh del         # 删除用户密码"
-    echo "  ./ss.sh list        # 列出当前用户"
     echo "  ./ss.sh start       # 启动服务"
     echo "  ./ss.sh stop        # 停止服务"
     echo "  ./ss.sh restart     # 重启服务"
@@ -83,7 +59,6 @@ case "$1" in
     echo "  ./ss.sh disable     # 禁用开机自启动"
     echo "  ./ss.sh status      # 查看服务状态"
     echo "  ./ss.sh logs        # 查看服务日志"
-    echo "  ./ss.sh query       # 查询用户配置"
     exit 1
     ;;
 esac

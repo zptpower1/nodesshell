@@ -29,9 +29,8 @@ function install_shadowsocks() {
   chown shadowsocks:shadowsocks "$LOG_DIR" || true
   chmod 755 "$LOG_DIR"
 
-  # 创建默认的 admin 用户
   SERVER_PORT=${SERVER_PORT:-8388}
-  echo "📌 使用管理员端口: $SERVER_PORT"
+  echo "📌 使用端口: $SERVER_PORT"
 
   LOCAL_PORT=${LOCAL_PORT:-2080}
   echo "📌 使用本地端口: $LOCAL_PORT"
@@ -41,24 +40,7 @@ function install_shadowsocks() {
   echo "📌 加密方法: $METHOD"
 
   PASSWORD=$(cat /proc/sys/kernel/random/uuid)
-  echo "📌 管理员密码: $PASSWORD"
-
-  # 创建用户配置文件
-  echo "📌 创建用户配置文件..."
-  cat > "$USERS_PATH" <<EOF
-{
-  "users": {
-    "admin": {
-      "port": $SERVER_PORT,
-      "password": "$PASSWORD",
-      "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-      "description": "默认管理员账户"
-    }
-  }
-}
-EOF
-  chown root:shadowsocks "$USERS_PATH" || true
-  chmod 644 "$USERS_PATH"
+  echo "📌 密码: $PASSWORD"
 
   echo "请选择 IP 协议支持："
   echo "1) 仅 IPv4"
@@ -77,13 +59,12 @@ EOF
   cat > "$CONFIG_PATH" <<EOF
 {
     "server": $SERVER_IP,
-    "mode": "tcp_and_udp",
+    "server_port": $SERVER_PORT,
     "local_port": $LOCAL_PORT,
+    "password": "$PASSWORD",
     "timeout": 300,
     "method": "$METHOD",
-    "port_password": {
-        "$SERVER_PORT": "$PASSWORD"
-    }
+    "mode": "tcp_and_udp"
 }
 EOF
   chown root:shadowsocks "$CONFIG_PATH" || true
