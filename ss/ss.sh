@@ -33,7 +33,11 @@ case "$1" in
     delete_user
     ;;
   list)
-    list_users
+    if [[ -n "$2" ]]; then
+      list_users "$2"
+    else
+      list_users
+    fi
     ;;
   start)
     start_service
@@ -57,7 +61,11 @@ case "$1" in
     logs_service
     ;;
   query)
-    print_client_info
+    if [[ -n "$2" ]]; then
+      print_client_info "$2"
+    else
+      print_client_info
+    fi
     ;;
   *)
     echo "❌ 参数错误！可用命令：install / upgrade / uninstall / add / del / list / start / stop / restart / enable / disable / status / logs / query"

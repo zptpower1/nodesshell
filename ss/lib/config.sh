@@ -23,9 +23,13 @@ function print_client_info() {
     return
   fi
 
+  # 如果没有提供用户名参数，进入交互式查询模式
   if [[ -z "$USERNAME" ]]; then
-    echo "⚠️ 未指定用户名。"
-    return
+    read -p "请输入要查询的用户名 [可选，直接回车显示所有]: " USERNAME
+    if [[ -z "$USERNAME" ]]; then
+      list_users
+      return
+    fi
   fi
 
   if ! jq -e ".users[\"$USERNAME\"]" "$USERS_PATH" >/dev/null 2>&1; then
