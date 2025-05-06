@@ -60,8 +60,13 @@ function print_client_info() {
   CONFIG="$METHOD:$PASSWORD@$ADD:$PORT"
   SS_URL="ss://$(echo -n "$CONFIG" | base64)#$NODENAME"
   echo "🔗 SS 链接: $SS_URL"
-  echo "🔲 二维码:"
-  echo "$SS_URL" | qrencode -t UTF8
+  
+  # 根据环境变量配置决定是否显示二维码
+  SHOW_QRCODE=$(source "$ENV_FILE" && echo "${SHOWQRCODE:-false}")
+  if [[ "$SHOW_QRCODE" == "true" ]]; then
+    echo "🔲 二维码:"
+    echo "$SS_URL" | qrencode -t UTF8
+  fi
   echo "-------------------------------------------"
 }
 
