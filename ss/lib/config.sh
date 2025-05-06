@@ -59,7 +59,8 @@ function print_client_info() {
   # 生成 SS 链接和二维码
   CONFIG="$METHOD:$PASSWORD@$ADD:$PORT"
   SS_URL="ss://$(echo -n "$CONFIG" | base64)#$NODENAME"
-  echo "🔗 SS 链接: $SS_URL"
+  echo "🔗 SS 链接:"
+  echo "$SS_URL"
   
   # 根据环境变量配置决定是否显示二维码
   SHOW_QRCODE=$(source "$ENV_FILE" && echo "${SHOWQRCODE:-false}")
