@@ -2,9 +2,10 @@
 #通用工具函数
 
 # 通用变量
-CONFIG_PATH="/usr/local/etc/shadowsocks/config.json"
-USERS_PATH="/usr/local/etc/shadowsocks/users.json"
-BACKUP_DIR="/usr/local/etc/shadowsocks/backup"
+SSBASE_PATH="/usr/local/etc/shadowsocks"
+CONFIG_PATH="$SSBASE_PATH/config.json"
+USERS_PATH="$SSBASE_PATH/users.json"
+BACKUP_DIR="$SSBASE_PATH/backup"
 LOG_DIR="/var/log/shadowsocks"
 SS_BIN="/usr/bin/ss-server"
 SERVICE_NAME="shadowsocks"

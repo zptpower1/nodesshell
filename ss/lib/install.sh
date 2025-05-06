@@ -126,10 +126,10 @@ EOF
 
   # 创建软链接方便调试
   echo "📌 创建配置和日志软链接..."
-  if [[ ! -f "config.json" ]]; then
-    ln -s "$CONFIG_PATH" ./config.json && echo "✅ 配置文件软链接创建成功。" || echo "⚠️ 配置文件软链接创建失败。"
+  if [[ ! -d "configs" ]]; then
+    ln -s "$SSBASE_PATH" ./configs && echo "✅ 配置目录软链接创建成功。" || echo "⚠️ 配置目录软链接创建失败。"
   else
-    echo "⚠️ 当前目录已存在 config.json 文件，跳过创建软链接。"
+    echo "⚠️ 当前目录已存在 configs 目录，跳过创建软链接。"
   fi
 
   if [[ ! -d "logs" ]]; then
