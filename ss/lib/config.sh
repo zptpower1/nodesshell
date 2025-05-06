@@ -39,10 +39,12 @@ function print_client_info() {
 
   echo "📱 Clash 配置示例："
   echo "proxies:"
-  jq -r '.port_password | to_entries[] | "  - name: \($ENV.NODENAME)\n    type: ss\n    server: \($ENV.ADD)\n    port: \(.key)\n    cipher: \($ENV.METHOD)\n    password: \"\(.value)\""' --arg ENV "$NODENAME" --arg ADD "$ADD" --arg METHOD "$METHOD" "$CONFIG_PATH"
+  jq -r --arg name "$NODENAME" --arg addr "$ADD" --arg method "$METHOD" \
+    '.port_password | to_entries[] | "  - name: \($name)\n    type: ss\n    server: \($addr)\n    port: \(.key)\n    cipher: \($method)\n    password: \"\(.value)\""' "$CONFIG_PATH"
 
   echo "SS 链接: "
-  jq -r '.port_password | to_entries[] | "ss://\(($ENV.METHOD + ":" + .value + "@" + $ENV.ADD + ":" + .key) | @base64)#\($ENV.NODENAME)"' --arg ENV "$NODENAME" --arg ADD "$ADD" --arg METHOD "$METHOD" "$CONFIG_PATH"
+  jq -r --arg name "$NODENAME" --arg addr "$ADD" --arg method "$METHOD" \
+    '.port_password | to_entries[] | "ss://\(($method + ":" + .value + "@" + $addr + ":" + .key) | @base64)#\($name)"' "$CONFIG_PATH"
   echo "-------------------------------------------"
 }
 
