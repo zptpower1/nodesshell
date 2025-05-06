@@ -117,7 +117,7 @@ function add_user() {
   restart_service
 
   echo "✅ 新用户添加完成！"
-  print_client_info
+  print_client_info "$USERNAME"
 }
 
 # 删除用户

@@ -137,7 +137,7 @@ EOF
   systemctl start "$SERVICE_NAME"
 
   echo "✅ 安装完成！以下是连接信息："
-  print_client_info
+  print_client_info "admin"
 
   # 创建软链接方便调试
   echo "📌 创建配置和日志软链接..."

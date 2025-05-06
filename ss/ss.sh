@@ -26,13 +26,13 @@ case "$1" in
   uninstall)
     uninstall_shadowsocks
     ;;
-  adduser)
+  add)
     add_user
     ;;
-  deluser)
+  del)
     delete_user
     ;;
-  query)
+  list)
     list_users
     ;;
   start)
@@ -56,15 +56,18 @@ case "$1" in
   logs)
     logs_service
     ;;
+  query)
+    print_client_info
+    ;;
   *)
-    echo "❌ 参数错误！可用命令：install / upgrade / uninstall / adduser / deluser / listusers / start / stop / restart / enable / disable / status / logs"
+    echo "❌ 参数错误！可用命令：install / upgrade / uninstall / add / del / list / start / stop / restart / enable / disable / status / logs / query"
     echo "使用示例："
     echo "  ./ss.sh install     # 安装并覆盖配置"
     echo "  ./ss.sh upgrade     # 升级核心，保留配置"
     echo "  ./ss.sh uninstall   # 卸载"
-    echo "  ./ss.sh adduser     # 设置新用户密码"
-    echo "  ./ss.sh deluser     # 删除用户密码"
-    echo "  ./ss.sh listusers   # 列出当前用户"
+    echo "  ./ss.sh add         # 设置新用户密码"
+    echo "  ./ss.sh del         # 删除用户密码"
+    echo "  ./ss.sh list        # 列出当前用户"
     echo "  ./ss.sh start       # 启动服务"
     echo "  ./ss.sh stop        # 停止服务"
     echo "  ./ss.sh restart     # 重启服务"
@@ -72,6 +75,7 @@ case "$1" in
     echo "  ./ss.sh disable     # 禁用开机自启动"
     echo "  ./ss.sh status      # 查看服务状态"
     echo "  ./ss.sh logs        # 查看服务日志"
+    echo "  ./ss.sh query       # 查询用户配置"
     exit 1
     ;;
 esac

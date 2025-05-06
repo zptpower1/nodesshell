@@ -17,10 +17,21 @@ function validate_config() {
 
 # 打印客户端信息
 function print_client_info() {
-  if [[ ! -f "$CONFIG_PATH" ]]; then
+  local USERNAME="$1"
+  if [[ ! -f "$CONFIG_PATH" ]] || [[ ! -f "$USERS_PATH" ]]; then
     echo "⚠️ 未找到配置文件，无法生成客户端信息。"
     return
   fi
+
+  if [[ -z "$USERNAME" ]]; then
+    echo "⚠️ 未指定用户名。"
+    return
+  fi
+
+  if ! jq -e ".users[\"$USERNAME\"]" "$USERS_PATH" >/dev/null 2>&1; then
+    echo "⚠️ 用户 $USERNAME 不存在。"
+    return
+  }
 
   METHOD=$(jq -r '.method' "$CONFIG_PATH")
   NODENAME=$(source "$ENV_FILE" && echo "$NODENAME")
@@ -33,19 +44,67 @@ function print_client_info() {
     echo "📌 使用服务器 IP: $ADD"
   fi
 
-  echo "✅ 所有端口配置信息："
-  echo "-------------------------------------------"
-  jq -r '.port_password | to_entries[] | "端口: \(.key)\n密码: \(.value)\n-------------------------------------------"' "$CONFIG_PATH"
+  # 获取用户的端口和密码
+  PORT=$(jq -r --arg un "$USERNAME" '.users[$un].port' "$USERS_PATH")
+  PASSWORD=$(jq -r --arg un "$USERNAME" '.users[$un].password' "$USERS_PATH")
 
-  echo "📱 Clash 配置示例："
-  echo "proxies:"
-  jq -r --arg name "$NODENAME" --arg addr "$ADD" --arg method "$METHOD" \
-    '.port_password | to_entries[] | "  - name: \($name)\n    type: ss\n    server: \($addr)\n    port: \(.key)\n    cipher: \($method)\n    password: \"\(.value)\""' "$CONFIG_PATH"
+  echo "📱 Clash 配置："
+  echo "  - name: $NODENAME"
+  echo "    type: ss"
+  echo "    server: $ADD"
+  echo "    port: $PORT"
+  echo "    cipher: $METHOD"
+  echo "    password: \"$PASSWORD\""
 
-  echo "SS 链接: "
-  jq -r --arg name "$NODENAME" --arg addr "$ADD" --arg method "$METHOD" \
-    '.port_password | to_entries[] | "ss://\(($method + ":" + .value + "@" + $addr + ":" + .key) | @base64)#\($name)"' "$CONFIG_PATH"
+  # 生成 SS 链接和二维码
+  CONFIG="$METHOD:$PASSWORD@$ADD:$PORT"
+  SS_URL="ss://$(echo -n "$CONFIG" | base64)#$NODENAME"
+  echo "🔗 SS 链接: $SS_URL"
+  echo "🔲 二维码:"
+  echo "$SS_URL" | qrencode -t UTF8
   echo "-------------------------------------------"
+}
+
+# 查询用户信息
+function query_user_info() {
+  validate_users
+  
+  # 如果提供了搜索关键词，则进行模糊匹配
+  read -p "请输入搜索关键词 [可选，直接回车显示所有]: " SEARCH_TERM
+  
+  echo "📋 查询结果："
+  echo "========================================="
+  
+  if [[ -n "$SEARCH_TERM" ]]; then
+    echo "🔍 搜索关键词: $SEARCH_TERM"
+    # 使用 jq 查找匹配的用户
+    MATCHED_USERS=$(jq -r --arg term "$SEARCH_TERM" '
+      .users 
+      | to_entries[] 
+      | select(
+          (.key | ascii_downcase | contains($term | ascii_downcase)) or
+          (.value.description | ascii_downcase | contains($term | ascii_downcase)) or
+          (.value.created_at | contains($term))
+        )
+      | .key' "$USERS_PATH")
+  else
+    # 获取所有用户
+    MATCHED_USERS=$(jq -r '.users | keys[]' "$USERS_PATH")
+  fi
+
+  # 将匹配结果转换为数组并打印每个用户的信息
+  while IFS= read -r USERNAME; do
+    if [[ -n "$USERNAME" ]]; then
+      echo "用户信息："
+      jq -r --arg un "$USERNAME" '
+        .users[$un] | 
+        "用户名: \($un)\n端口: \(.port)\n密码: \(.password)\n创建时间: \(.created_at)\n描述: \(.description)"
+      ' "$USERS_PATH"
+      echo "连接信息："
+      print_client_info "$USERNAME"
+      echo "========================================="
+    fi
+  done <<< "$MATCHED_USERS"
 }
 
 # 备份配置
