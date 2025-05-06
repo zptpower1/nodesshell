@@ -12,6 +12,7 @@ SERVICE_NAME="shadowsocks"
 SERVICE_FILE="/etc/systemd/system/shadowsocks.service"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
+MAX_RESULTS=10
 
 # 检查root权限
 function check_root() {

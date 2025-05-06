@@ -69,15 +69,20 @@ function print_client_info() {
 function query_user_info() {
   validate_users
   
-  # 如果提供了搜索关键词，则进行模糊匹配
-  read -p "请输入搜索关键词 [可选，直接回车显示所有]: " SEARCH_TERM
+  # 如果提供了命令行参数，则使用参数作为搜索关键词
+  if [[ -n "$1" ]]; then
+    SEARCH_TERM="$1"
+  else
+    # 否则交互式输入搜索关键词
+    read -p "请输入搜索关键词 [可选，直接回车显示所有]: " SEARCH_TERM
+  fi
   
   echo "📋 查询结果："
   echo "========================================="
   
   if [[ -n "$SEARCH_TERM" ]]; then
     echo "🔍 搜索关键词: $SEARCH_TERM"
-    # 使用 jq 查找匹配的用户
+    # 使用 jq 查找匹配的用户，并限制结果数量为前10个
     MATCHED_USERS=$(jq -r --arg term "$SEARCH_TERM" '
       .users 
       | to_entries[] 
@@ -86,10 +91,11 @@ function query_user_info() {
           (.value.description | ascii_downcase | contains($term | ascii_downcase)) or
           (.value.created_at | contains($term))
         )
-      | .key' "$USERS_PATH")
+      | .key
+      | select(length > 0)' "$USERS_PATH" | head -n "$MAX_RESULTS")
   else
-    # 获取所有用户
-    MATCHED_USERS=$(jq -r '.users | keys[]' "$USERS_PATH")
+    # 获取所有用户，限制显示前10个
+    MATCHED_USERS=$(jq -r '.users | keys[]' "$USERS_PATH" | head -n "$MAX_RESULTS")
   fi
 
   # 将匹配结果转换为数组并打印每个用户的信息

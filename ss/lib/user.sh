@@ -49,9 +49,8 @@ function list_users() {
   
   if [[ -n "$SEARCH_TERM" ]]; then
     echo "🔍 搜索关键词: $SEARCH_TERM"
-    # 使用 jq 的 select 和 test 函数进行模糊匹配
-    # 匹配用户名、描述或创建时间中包含关键词的记录
-    jq -r --arg term "$SEARCH_TERM" '
+    # 使用 jq 的 select 和 test 函数进行模糊匹配，限制结果数量
+    jq -r --arg term "$SEARCH_TERM" --arg max "$MAX_RESULTS" '
       .users 
       | to_entries[] 
       | select(
@@ -60,10 +59,22 @@ function list_users() {
           (.value.created_at | contains($term))
         )
       | "用户名: \(.key)\n端口: \(.value.port)\n密码: \(.value.password)\n创建时间: \(.value.created_at)\n描述: \(.value.description)\n-------------------------------------------"
-    ' "$USERS_PATH"
+      | select(length > 0)
+    ' "$USERS_PATH" | head -n $(($MAX_RESULTS * 6))  # 每个用户信息占6行（5行信息+1行分隔线）
   else
-    # 显示所有用户
-    jq -r '.users | to_entries[] | "用户名: \(.key)\n端口: \(.value.port)\n密码: \(.value.password)\n创建时间: \(.value.created_at)\n描述: \(.value.description)\n-------------------------------------------"' "$USERS_PATH"
+    # 显示所有用户，限制数量
+    jq -r --arg max "$MAX_RESULTS" '
+      .users 
+      | to_entries[0:($max | tonumber)] 
+      | .[] 
+      | "用户名: \(.key)\n端口: \(.value.port)\n密码: \(.value.password)\n创建时间: \(.value.created_at)\n描述: \(.value.description)\n-------------------------------------------"
+    ' "$USERS_PATH"
+  fi
+
+  # 如果结果被截断，显示提示信息
+  TOTAL_USERS=$(jq '.users | length' "$USERS_PATH")
+  if [ "$TOTAL_USERS" -gt "$MAX_RESULTS" ]; then
+    echo "⚠️ 仅显示前 $MAX_RESULTS 个结果，总共有 $TOTAL_USERS 个用户"
   fi
 }
 
