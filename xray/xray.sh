@@ -34,6 +34,9 @@ function load_nodename() {
     source "$ENV_FILE"
     if [[ -n "$NODENAME" ]]; then
       echo "📌 从 .env 文件读取节点名称: $NODENAME"
+      if [[ -n "$NODEDOMAIN" ]]; then
+        echo "📌 从 .env 文件读取节点域名: $NODEDOMAIN"
+      fi
       return
     fi
   fi
@@ -43,7 +46,14 @@ function load_nodename() {
     read -p "请输入节点名称（不能为空）: " NODENAME
     if [[ -n "$NODENAME" ]]; then
       echo "📌 设置节点名称: $NODENAME"
-      echo "NODENAME=$NODENAME" > "$ENV_FILE"
+      read -p "请输入节点域名（可选，直接回车跳过）: " NODEDOMAIN
+      if [[ -n "$NODEDOMAIN" ]]; then
+        echo "📌 设置节点域名: $NODEDOMAIN"
+        echo "NODENAME=$NODENAME" > "$ENV_FILE"
+        echo "NODEDOMAIN=$NODEDOMAIN" >> "$ENV_FILE"
+      else
+        echo "NODENAME=$NODENAME" > "$ENV_FILE"
+      fi
       break
     else
       echo "❌ 节点名称不能为空，请重新输入。"
@@ -73,7 +83,19 @@ function print_client_info() {
   PUBLIC_KEY=$(jq -r '.inbounds[0].streamSettings.realitySettings.publicKey' "$CONFIG_PATH")
   SHORT_ID=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' "$CONFIG_PATH")
   NODENAME=$(jq -r '.inbounds[0].nodename // "Unknown"' "$CONFIG_PATH")
-  ADD=$(curl -s ipv4.ip.sb || echo "your.server.com")
+  if [[ -f "$ENV_FILE" ]]; then
+    source "$ENV_FILE"
+    if [[ -n "$NODEDOMAIN" ]]; then
+      ADD="$NODEDOMAIN"
+      echo "📌 使用节点域名: $ADD"
+    else
+      ADD=$(curl -s ipv4.ip.sb || echo "your.server.com")
+      echo "📌 使用服务器 IP: $ADD"
+    fi
+  else
+    ADD=$(curl -s ipv4.ip.sb || echo "your.server.com")
+    echo "📌 使用服务器 IP: $ADD"
+  fi
 
   echo "✅ 客户端配置信息："
   echo "-------------------------------------------"
@@ -352,7 +374,23 @@ EOF
   systemctl restart xray
   systemctl enable xray
 
-  echo "✅ 安装完成！以下是连接信息："
+  echo "✅ 安装完成！"
+  
+  # 创建软链接方便调试
+  echo "📌 创建配置和日志软链接..."
+  if [[ ! -f "config.json" ]]; then
+    ln -s "$CONFIG_PATH" ./config.json && echo "✅ 配置文件软链接创建成功。" || echo "⚠️ 配置文件软链接创建失败。"
+  else
+    echo "⚠️ 当前目录已存在 config.json 文件，跳过创建软链接。"
+  fi
+
+  if [[ ! -d "logs" ]]; then
+    ln -s "/var/log/xray" ./logs && echo "✅ 日志目录软链接创建成功。" || echo "⚠️ 日志目录软链接创建失败。"
+  else
+    echo "⚠️ 当前目录已存在 logs 目录，跳过创建软链接。"
+  fi
+
+  echo "以下是连接信息："
   print_client_info
 }
 

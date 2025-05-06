@@ -429,6 +429,27 @@ EOF
 
   echo "✅ 安装完成！以下是连接信息："
   print_client_info
+
+  # 创建软链接方便调试
+  echo "📌 创建配置和日志软链接..."
+  if [[ ! -f "config.json" ]]; then
+    ln -s "$CONFIG_PATH" ./config.json && echo "✅ 配置文件软链接创建成功。" || echo "⚠️ 配置文件软链接创建失败。"
+  else
+    echo "⚠️ 当前目录已存在 config.json 文件，跳过创建软链接。"
+  fi
+
+  if [[ ! -d "logs" ]]; then
+    ln -s "$LOG_DIR" ./logs && echo "✅ 日志目录软链接创建成功。" || echo "⚠️ 日志目录软链接创建失败。"
+  else
+    echo "⚠️ 当前目录已存在 logs 目录，跳过创建软链接。"
+  fi
+
+  if [[ ! -f "$ENV_FILE" ]]; then
+    echo "⚠️ 提示：当前目录缺少 .env 文件，建议创建并配置 NODENAME 和 NODEDOMAIN（可选）。"
+    echo "示例："
+    echo "NODENAME=my-ss-server"
+    echo "NODEDOMAIN=example.com"
+  fi
 }
 
 # 参数分发入口
