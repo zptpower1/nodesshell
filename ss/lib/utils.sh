@@ -42,7 +42,7 @@ function ensure_ss_user() {
 
 # 加载环境变量
 function load_env() {
-  echo "🔍 调试：ENV_FILE 路径为 $ENV_FILE"
+  #echo "🔍 调试：ENV_FILE 路径为 $ENV_FILE"
   if [[ ! -f "$ENV_FILE" ]]; then
     echo "🔍 调试：.env 文件不存在"
     echo "❌ 错误：未找到 .env 文件，该文件必须存在于脚本同级目录。"
@@ -52,10 +52,10 @@ function load_env() {
     exit 1
   fi
 
-  echo "🔍 调试：.env 文件存在，准备读取"
+  #echo "🔍 调试：.env 文件存在，准备读取"
   source "$ENV_FILE"
-  echo "🔍 调试：.env 文件内容："
-  cat "$ENV_FILE"
+  #echo "🔍 调试：.env 文件内容："
+  #cat "$ENV_FILE"
 
   if [[ -z "$NODENAME" ]]; then
     echo "🔍 调试：NODENAME 变量为空"
@@ -63,7 +63,7 @@ function load_env() {
     exit 1
   fi
 
-  echo "📌 从 .env 文件读取节点名称: $NODENAME"
+  #echo "📌 从 .env 文件读取节点名称: $NODENAME"
   if [[ -n "$NODEDOMAIN" ]]; then
     echo "📌 从 .env 文件读取节点域名: $NODEDOMAIN"
   fi

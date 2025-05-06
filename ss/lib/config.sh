@@ -5,8 +5,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 验证配置文件
 function validate_config() {
-  if [[ ! -f "$SSBASE_PATH" ]]; then
-    echo "⚠️ 配置目录 $SSBASE_PATH 不存在，请先运行 './ss.sh install' 创建配置。"
+  if [[ ! -f "$CONFIG_PATH" ]]; then
+    echo "⚠️ 配置目录 $CONFIG_PATH 不存在，请先运行 './ss.sh install' 创建配置。"
     exit 1
   fi
   if ! jq -e '.port_password' "$CONFIG_PATH" >/dev/null 2>&1; then
