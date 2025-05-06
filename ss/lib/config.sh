@@ -68,49 +68,42 @@ function print_client_info() {
 # 查询用户信息
 function query_user_info() {
   validate_users
-  
+
   # 如果提供了命令行参数，则使用参数作为搜索关键词
   if [[ -n "$1" ]]; then
     SEARCH_TERM="$1"
   else
-    # 否则交互式输入搜索关键词
-    read -p "请输入搜索关键词 [可选，直接回车显示所有]: " SEARCH_TERM
+    # 否则交互式输入用户名
+    read -p "请输入用户名: " SEARCH_TERM
   fi
+  
+  # 必须提供用户名参数
+  if [[ -z "$SEARCH_TERM" ]]; then
+    echo "❌ 错误：必须提供用户名参数。"
+    echo "使用方法: ./ss.sh query <用户名>"
+    return 1
+  fi
+
+  USERNAME="$SEARCH_TERM"
   
   echo "📋 查询结果："
   echo "========================================="
   
-  if [[ -n "$SEARCH_TERM" ]]; then
-    echo "🔍 搜索关键词: $SEARCH_TERM"
-    # 使用 jq 查找匹配的用户，并限制结果数量为前10个
-    MATCHED_USERS=$(jq -r --arg term "$SEARCH_TERM" '
-      .users 
-      | to_entries[] 
-      | select(
-          (.key | ascii_downcase | contains($term | ascii_downcase)) or
-          (.value.description | ascii_downcase | contains($term | ascii_downcase)) or
-          (.value.created_at | contains($term))
-        )
-      | .key
-      | select(length > 0)' "$USERS_PATH" | head -n "$MAX_RESULTS")
-  else
-    # 获取所有用户，限制显示前10个
-    MATCHED_USERS=$(jq -r '.users | keys[]' "$USERS_PATH" | head -n "$MAX_RESULTS")
+  # 检查用户是否存在
+  if ! jq -e ".users[\"$USERNAME\"]" "$USERS_PATH" >/dev/null 2>&1; then
+    echo "⚠️ 用户 $USERNAME 不存在。"
+    return 1
   fi
 
-  # 将匹配结果转换为数组并打印每个用户的信息
-  while IFS= read -r USERNAME; do
-    if [[ -n "$USERNAME" ]]; then
-      echo "用户信息："
-      jq -r --arg un "$USERNAME" '
-        .users[$un] | 
-        "用户名: \($un)\n端口: \(.port)\n密码: \(.password)\n创建时间: \(.created_at)\n描述: \(.description)"
-      ' "$USERS_PATH"
-      echo "连接信息："
-      print_client_info "$USERNAME"
-      echo "========================================="
-    fi
-  done <<< "$MATCHED_USERS"
+  # 显示用户信息
+  echo "用户信息："
+  jq -r --arg un "$USERNAME" '
+    .users[$un] | 
+    "用户名: \($un)\n端口: \(.port)\n密码: \(.password)\n创建时间: \(.created_at)\n描述: \(.description)"
+  ' "$USERS_PATH"
+  echo "连接信息："
+  print_client_info "$USERNAME"
+  echo "========================================="
 }
 
 # 备份配置
