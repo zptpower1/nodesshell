@@ -35,9 +35,31 @@ function sync_users_to_config() {
 # 列出用户
 function list_users() {
   validate_users
+  
+  # 如果提供了搜索关键词，则进行模糊匹配
+  read -p "请输入搜索关键词 [可选，直接回车显示所有]: " SEARCH_TERM
+  
   echo "📋 当前用户列表："
   echo "-------------------------------------------"
-  jq -r '.users | to_entries[] | "用户名: \(.key)\n端口: \(.value.port)\n密码: \(.value.password)\n创建时间: \(.value.created_at)\n描述: \(.value.description)\n-------------------------------------------"' "$USERS_PATH"
+  
+  if [[ -n "$SEARCH_TERM" ]]; then
+    echo "🔍 搜索关键词: $SEARCH_TERM"
+    # 使用 jq 的 select 和 test 函数进行模糊匹配
+    # 匹配用户名、描述或创建时间中包含关键词的记录
+    jq -r --arg term "$SEARCH_TERM" '
+      .users 
+      | to_entries[] 
+      | select(
+          (.key | ascii_downcase | contains($term | ascii_downcase)) or
+          (.value.description | ascii_downcase | contains($term | ascii_downcase)) or
+          (.value.created_at | contains($term))
+        )
+      | "用户名: \(.key)\n端口: \(.value.port)\n密码: \(.value.password)\n创建时间: \(.value.created_at)\n描述: \(.value.description)\n-------------------------------------------"
+    ' "$USERS_PATH"
+  else
+    # 显示所有用户
+    jq -r '.users | to_entries[] | "用户名: \(.key)\n端口: \(.value.port)\n密码: \(.value.password)\n创建时间: \(.value.created_at)\n描述: \(.value.description)\n-------------------------------------------"' "$USERS_PATH"
+  fi
 }
 
 # 添加用户
@@ -104,16 +126,16 @@ function delete_user() {
   validate_users
   validate_config
 
-  list_users
-  read -p "请输入要删除的用户名称: " USERNAME
-  if [[ -z "$USERNAME" ]]; then
-    echo "❌ 用户名称不能为空。"
-    return
+  if [[ -z "$1" ]]; then
+    echo "❌ 错误：必须提供用户名参数。"
+    echo "使用方法: ./ss.sh deluser <用户名>"
+    return 1
   fi
 
+  USERNAME="$1"
   if ! jq -e ".users[\"$USERNAME\"]" "$USERS_PATH" >/dev/null 2>&1; then
-    echo "❌ 指定用户不存在。"
-    return
+    echo "❌ 用户 $USERNAME 不存在。"
+    return 1
   fi
 
   PORT=$(jq -r ".users[\"$USERNAME\"].port" "$USERS_PATH")
@@ -121,7 +143,7 @@ function delete_user() {
   read -p "确认 (y/N): " CONFIRM
   case "$CONFIRM" in
     [yY]) ;;
-    *) echo "❌ 已取消删除操作。"; return ;;
+    *) echo "❌ 已取消删除操作。"; return 1 ;;
   esac
 
   backup_config
@@ -138,6 +160,5 @@ function delete_user() {
 
   restart_service
 
-  echo "✅ 用户已删除！"
-  list_users
+  echo "✅ 用户 $USERNAME 已删除！"
 }

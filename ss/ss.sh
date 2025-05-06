@@ -32,7 +32,7 @@ case "$1" in
   deluser)
     delete_user
     ;;
-  listusers)
+  query)
     list_users
     ;;
   start)
@@ -56,11 +56,8 @@ case "$1" in
   logs)
     logs_service
     ;;
-  query)
-    print_client_info
-    ;;
   *)
-    echo "❌ 参数错误！可用命令：install / upgrade / uninstall / adduser / deluser / listusers / start / stop / restart / enable / disable / status / logs / query"
+    echo "❌ 参数错误！可用命令：install / upgrade / uninstall / adduser / deluser / listusers / start / stop / restart / enable / disable / status / logs"
     echo "使用示例："
     echo "  ./ss.sh install     # 安装并覆盖配置"
     echo "  ./ss.sh upgrade     # 升级核心，保留配置"
@@ -75,7 +72,6 @@ case "$1" in
     echo "  ./ss.sh disable     # 禁用开机自启动"
     echo "  ./ss.sh status      # 查看服务状态"
     echo "  ./ss.sh logs        # 查看服务日志"
-    echo "  ./ss.sh query       # 查询当前用户配置"
     exit 1
     ;;
 esac
