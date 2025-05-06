@@ -31,7 +31,7 @@ function print_client_info() {
   if ! jq -e ".users[\"$USERNAME\"]" "$USERS_PATH" >/dev/null 2>&1; then
     echo "⚠️ 用户 $USERNAME 不存在。"
     return
-  }
+  fi  # 这里原来是 }，需要改为 fi
 
   METHOD=$(jq -r '.method' "$CONFIG_PATH")
   NODENAME=$(source "$ENV_FILE" && echo "$NODENAME")
