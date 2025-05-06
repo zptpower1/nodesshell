@@ -62,9 +62,9 @@ case "$1" in
     ;;
   query)
     if [[ -n "$2" ]]; then
-      print_client_info "$2"
+      query_user_info "$2"
     else
-      print_client_info
+      query_user_info
     fi
     ;;
   *)
