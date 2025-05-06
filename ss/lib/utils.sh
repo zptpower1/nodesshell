@@ -42,7 +42,9 @@ function ensure_ss_user() {
 
 # 加载环境变量
 function load_env() {
+  echo "🔍 调试：ENV_FILE 路径为 $ENV_FILE"
   if [[ ! -f "$ENV_FILE" ]]; then
+    echo "🔍 调试：.env 文件不存在"
     echo "❌ 错误：未找到 .env 文件，该文件必须存在于脚本同级目录。"
     echo "请创建 .env 文件并配置以下内容："
     echo "NODENAME=your-node-name"
@@ -50,8 +52,13 @@ function load_env() {
     exit 1
   fi
 
+  echo "🔍 调试：.env 文件存在，准备读取"
   source "$ENV_FILE"
+  echo "🔍 调试：.env 文件内容："
+  cat "$ENV_FILE"
+
   if [[ -z "$NODENAME" ]]; then
+    echo "🔍 调试：NODENAME 变量为空"
     echo "❌ 错误：.env 文件中必须设置 NODENAME 变量。"
     exit 1
   fi
