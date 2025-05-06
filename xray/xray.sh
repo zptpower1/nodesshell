@@ -295,6 +295,17 @@ function install_xray() {
   fi
   echo "📌 用户数量: $USER_COUNT"
 
+  echo "请选择 IP 协议支持："
+  echo "1) 仅 IPv4"
+  echo "2) 仅 IPv6"
+  echo "3) 同时支持 IPv4 和 IPv6 [默认]"
+  read -p "请输入选项 [1-3]: " IP_VERSION
+  case "$IP_VERSION" in
+    1) LISTEN_IP="0.0.0.0"; echo "📌 仅支持 IPv4" ;;
+    2) LISTEN_IP="::"; echo "📌 仅支持 IPv6" ;;
+    *) LISTEN_IP="::"; echo "📌 同时支持 IPv4 和 IPv6" ;;
+  esac
+
   load_nodename
 
   CLIENTS_JSON="[]"
@@ -331,6 +342,7 @@ function install_xray() {
     {
       "nodename": "$NODENAME",
       "port": $PORT,
+      "listen": "$LISTEN_IP",
       "protocol": "vless",
       "settings": {
         "clients": $CLIENTS_JSON,

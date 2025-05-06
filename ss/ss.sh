@@ -363,12 +363,23 @@ function install_shadowsocks() {
   PASSWORD=$(cat /proc/sys/kernel/random/uuid)
   echo "📌 自动生成密码: $PASSWORD"
 
+  echo "请选择 IP 协议支持："
+  echo "1) 仅 IPv4"
+  echo "2) 仅 IPv6"
+  echo "3) 同时支持 IPv4 和 IPv6 [默认]"
+  read -p "请输入选项 [1-3]: " IP_VERSION
+  case "$IP_VERSION" in
+    1) SERVER_IP="\"0.0.0.0\""; echo "📌 仅支持 IPv4" ;;
+    2) SERVER_IP="\"::\""; echo "📌 仅支持 IPv6" ;;
+    *) SERVER_IP="[\"::\", \"0.0.0.0\"]"; echo "📌 同时支持 IPv4 和 IPv6" ;;
+  esac
+
   load_env
 
   echo "🧩 写入配置文件..."
   cat > "$CONFIG_PATH" <<EOF
 {
-    "server": ["::", "0.0.0.0"],
+    "server": $SERVER_IP,
     "mode": "tcp_and_udp",
     "server_port": $SERVER_PORT,
     "local_port": $LOCAL_PORT,
