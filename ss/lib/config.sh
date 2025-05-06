@@ -25,13 +25,54 @@ function print_client_info() {
 
   # 如果没有提供用户名参数，进入交互式查询模式
   if [[ -z "$USERNAME" ]]; then
-    read -p "请输入要查询的用户名 [可选，直接回车显示所有]: " USERNAME
+    read -p "请输入要查询的用户名或关键词: " SEARCH_TERM
+    if [[ -z "$SEARCH_TERM" ]]; then
+      echo "⚠️ 搜索关键词不能为空。"
+      return
+    fi
+
+    # 使用 list_users 函数进行模糊查询
+    MATCHED_USERS=$(jq -r --arg term "$SEARCH_TERM" '
+      .users 
+      | to_entries[] 
+      | select(
+          (.key | ascii_downcase | contains($term | ascii_downcase)) or
+          (.value.description | ascii_downcase | contains($term | ascii_downcase))
+        )
+      | .key' "$USERS_PATH")
+
+    # 统计匹配用户数量
+    USERS_COUNT=$(echo "$MATCHED_USERS" | grep -c "^" || echo 0)
+
+    case $USERS_COUNT in
+      0)
+        echo "⚠️ 未找到匹配的用户。"
+        return
+        ;;
+      1)
+        USERNAME=$(echo "$MATCHED_USERS" | head -n1)
+        echo "📌 找到唯一匹配用户: $USERNAME"
+        ;;
+      *)
+        echo "📋 找到多个匹配用户:"
+        echo "$MATCHED_USERS" | nl
+        while true; do
+          read -p "请输入要查询的用户编号 [1-$USERS_COUNT]: " USER_NUM
+          if [[ "$USER_NUM" =~ ^[0-9]+$ ]] && [ "$USER_NUM" -ge 1 ] && [ "$USER_NUM" -le "$USERS_COUNT" ]; then
+            USERNAME=$(echo "$MATCHED_USERS" | sed -n "${USER_NUM}p")
+            break
+          else
+            echo "❌ 无效的编号，请重新输入。"
+          fi
+        done
+        ;;
+    esac
   fi
 
   if ! jq -e ".users[\"$USERNAME\"]" "$USERS_PATH" >/dev/null 2>&1; then
     echo "⚠️ 用户 $USERNAME 不存在。"
     return
-  fi  # 这里原来是 }，需要改为 fi
+  fi
 
   METHOD=$(jq -r '.method' "$CONFIG_PATH")
   NODENAME=$(source "$ENV_FILE" && echo "$NODENAME")
