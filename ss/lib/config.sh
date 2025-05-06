@@ -58,7 +58,7 @@ function print_client_info() {
 
   # 生成 SS 链接和二维码
   CONFIG="$METHOD:$PASSWORD@$ADD:$PORT"
-  SS_URL="ss://$(echo -n "$CONFIG" | base64)#$NODENAME"
+  SS_URL="ss://$(echo -n "$CONFIG" | base64 -w 0)#$NODENAME"
   echo "🔗 SS 链接:"
   echo "$SS_URL"
   
