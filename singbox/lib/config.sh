@@ -25,7 +25,7 @@ create_config() {
       "listen": "::",
       "listen_port": ${DEFAULT_PORT},
       "method": "${DEFAULT_METHOD}",
-      "key": "$(openssl rand -hex 16)",
+      "psk": "$(openssl rand -hex 16)",
       "users": [
         $(generate_user_config "user1"),
         $(generate_user_config "user2"),
