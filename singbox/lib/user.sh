@@ -12,8 +12,8 @@ init_users_config() {
 # 生成用户配置
 generate_user_config() {
     local name="$1"
-    # 生成32字节(64个十六进制字符)的密钥
-    local password=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64)
+    # 生成16字节(32个十六进制字符)的密钥
+    local password=$(dd if=/dev/urandom bs=16 count=1 2>/dev/null | xxd -p -c 32)
     echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
 }
 
