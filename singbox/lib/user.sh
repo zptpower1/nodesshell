@@ -31,8 +31,6 @@ add_user() {
         return 1
     fi
     
-    init_users_config
-    
     # 检查用户是否已存在
     if jq -e ".users[] | select(.name == \"${name}\")" "${USERS_PATH}" > /dev/null; then
         echo "❌ 用户 ${name} 已存在"
@@ -44,7 +42,8 @@ add_user() {
     local temp_file=$(mktemp)
     jq ".users += [${user_config}]" "${USERS_PATH}" > "${temp_file}"
     mv "${temp_file}" "${USERS_PATH}"
-    
+
+    sync_config
     echo "✅ 用户 ${name} 添加成功"
     generate_client_config "${name}"
 }
@@ -62,6 +61,8 @@ delete_user() {
     jq ".users |= map(select(.name != \"${name}\"))" "${USERS_PATH}" > "${temp_file}"
     mv "${temp_file}" "${USERS_PATH}"
     
+
+    sync_config
     echo "✅ 用户 ${name} 删除成功"
 }
 

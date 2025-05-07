@@ -28,6 +28,8 @@ install_sing_box() {
 
     # 确保日志目录存在
     mkdir -p "${LOG_DIR}"
+    # 确保用于配置文件已存在
+    init_users_config
 }
 
 # 升级 sing-box

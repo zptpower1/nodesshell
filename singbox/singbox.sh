@@ -64,7 +64,6 @@ function install_ss2022_multiuser() {
         echo "✅ 用户 admin 已存在，跳过添加步骤"
     fi
 
-    sync_config
     setup_service
     check_service
     
