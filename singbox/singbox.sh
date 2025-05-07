@@ -3,54 +3,76 @@ set -e
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
-# 全局变量
-SS_BASE_PATH="/usr/local/etc/sing-box"
-CONFIG_PATH="${SS_BASE_PATH}/config.json"
-BASE_CONFIG_PATH="${SS_BASE_PATH}/base_config.json"
-USERS_PATH="${SS_BASE_PATH}/users.json"
-BACKUP_DIR="${SS_BASE_PATH}/backup"
-LOG_DIR="/var/log/sing-box"
-SS_BIN="/usr/local/bin/sing-box"
-SERVICE_NAME="sing-box"
-SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+# 加载所有模块
+source "${SCRIPT_DIR}/lib/utils.sh"
+source "${SCRIPT_DIR}/lib/install.sh"
+source "${SCRIPT_DIR}/lib/config.sh"
+source "${SCRIPT_DIR}/lib/service.sh"
+source "${SCRIPT_DIR}/lib/user.sh"
 
-# 检查服务状态
-check_service() {
-    echo "🔍 Sing-box 服务状态："
-    if pgrep -x "sing-box" > /dev/null; then
-        echo "✅ 服务正在运行"
-        echo
-        echo "📊 进程信息："
-        ps aux | grep sing-box | grep -v grep
-        echo
-        echo "🔌 监听端口："
-        lsof -i -P -n | grep sing-box
-        echo
-        echo "📈 资源使用："
-        top -b -n 1 | grep sing-box
-        echo
-        echo "📜 最近日志："
-        if [ -f "${LOG_DIR}/sing-box.log" ]; then
-            tail -n 10 "${LOG_DIR}/sing-box.log"
-        else
-            echo "❌ 日志文件不存在"
-        fi
-    else
-        echo "❌ 服务未运行"
-    fi
+# 检查环境文件
+load_env
+
+function base_check() {
+    check_root
+    check_dependencies
+}
+
+function install_ss2022_multiuser() {
+    install_sing_box
+    create_config
+    setup_service
+    check_service
+    generate_client_configs
 }
 
 # 主函数
 main() {
     case "$1" in
+        # 安装命令
+        install)
+            base_check
+            install_ss2022_multiuser
+            ;;
+            
+        # 升级命令
+        upgrade)
+            base_check
+            upgrade_sing_box
+            ;;
+            
+        # 卸载命令
+        uninstall)
+            uninstall_sing_box
+            ;;
+            
+        # 服务管理命令
+        stop)
+            stop_service
+            ;;
+        disable)
+            disable_service
+            ;;
         status)
+            status_service
+            ;;
+        check)
             check_service
             ;;
+            
         *)
             echo "用法: $0 <command> [args]"
             echo
+            echo "系统管理命令:"
+            echo "  install     安装服务[自动安装ss2022协议]"
+            echo "  upgrade     升级服务"
+            echo "  uninstall   卸载服务"
+            echo
             echo "服务管理命令:"
+            echo "  stop        停止服务"
+            echo "  disable     禁用服务"
             echo "  status      查看服务状态"
+            echo "  check       检查服务运行状态"
             exit 1
             ;;
     esac

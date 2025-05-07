@@ -4,7 +4,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 生成 PSK
 generate_psk() {
-    openssl rand -base64 32
+    # 生成32字节(64个十六进制字符)的主密钥
+    local server_key=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64)
+    echo "${server_key}"
 }
 
 # 设置配置文件

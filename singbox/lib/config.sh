@@ -30,9 +30,7 @@ create_config() {
       "method": "${DEFAULT_METHOD}",
       "password": "${server_key}",
       "users": [
-        $(generate_user_config "user1"),
-        $(generate_user_config "user2"),
-        $(generate_user_config "user3")
+        $(generate_user_config "admin")
       ]
     }
   ],
