@@ -26,6 +26,7 @@ create_config() {
 {
   "log": {
     "level": "info",
+    "output": "${LOG_DIR}/singbox.log",
     "timestamp": true
   },
   "inbounds": [
