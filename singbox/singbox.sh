@@ -132,6 +132,12 @@ main() {
             ;;
             
         # 服务管理命令
+        start)
+            start_service
+            ;;
+        restart)
+            restart_service
+            ;;
         stop)
             stop_service
             ;;
@@ -180,6 +186,8 @@ main() {
             echo "  query       查询用户配置"
             echo
             echo "服务管理命令:"
+            echo "  start       启动服务"
+            echo "  restart     重启服务"
             echo "  stop        停止服务"
             echo "  disable     禁用服务"
             echo "  status      查看服务状态"

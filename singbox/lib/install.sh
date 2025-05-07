@@ -25,6 +25,9 @@ install_sing_box() {
     tar -xzf /tmp/sing-box.tar.gz -C /tmp
     mv /tmp/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/
     rm -rf /tmp/sing-box*
+
+    # 确保日志目录存在
+    mkdir -p "${LOG_DIR}"
 }
 
 # 升级 sing-box
