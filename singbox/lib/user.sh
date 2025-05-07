@@ -34,7 +34,7 @@ delete_user() {
     if [ -z "${name}" ]; then
         echo "❌ 请提供用户名"
         return 1
-    }
+    fi
     
     local temp_file=$(mktemp)
     jq ".inbounds[0].users |= map(select(.name != \"${name}\"))" "${CONFIG_PATH}" > "${temp_file}"
