@@ -84,6 +84,54 @@ check_listen() {
     fi
 }
 
+# 检查系统日志
+check_logs() {
+    echo "📜 检查系统日志："
+    
+    if [ -f "/var/log/syslog" ]; then
+        echo "📄 /var/log/syslog 最近的日志："
+        tail -n 10 /var/log/syslog
+    else
+        echo "⚠️ /var/log/syslog 文件不存在"
+    fi
+    
+    if [ -f "/var/log/messages" ]; then
+        echo "📄 /var/log/messages 最近的日志："
+        tail -n 10 /var/log/messages
+    else
+        echo "⚠️ /var/log/messages 文件不存在"
+    fi
+}
+
+# 持续监听系统日志
+monitor_logs() {
+    echo "📜 持续监听系统日志："
+    
+    if [ -f "/var/log/syslog" ]; then
+        echo "📄 正在监听 /var/log/syslog ..."
+        tail -f /var/log/syslog &
+    else
+        echo "⚠️ /var/log/syslog 文件不存在"
+    fi
+    
+    if [ -f "/var/log/messages" ]; then
+        echo "📄 正在监听 /var/log/messages ..."
+        tail -f /var/log/messages &
+    else
+        echo "⚠️ /var/log/messages 文件不存在"
+    fi
+}
+
+# 列出所有 systemd 服务
+list_systemctls() {
+    echo "📜 列出所有 systemd 服务："
+    if [ -d "/etc/systemd/system" ]; then
+        ls /etc/systemd/system/*.service
+    else
+        echo "⚠️ /etc/systemd/system 目录不存在"
+    fi
+}
+
 main() {
     case "$1" in
         # 工具命令
@@ -105,7 +153,15 @@ main() {
         listen)
             check_listen "$2"
             ;;
-        
+        logs)
+            check_logs
+            ;;
+        monitor)
+            monitor_logs
+            ;;
+        systemctls)
+            list_systemctls
+            ;;
         *)
             echo "用法: $0 <command> [args]"
             echo
@@ -116,6 +172,9 @@ main() {
             echo "  network      查看网络连接状态"
             echo "  service      查看服务运行状态"
             echo "  info         查看系统信息"
+            echo "  logs         检查系统日志"
+            echo "  monitor      持续监听系统日志"
+            echo "  systemctls   列出所有 systemd 服务"
             ;;
     esac
 }

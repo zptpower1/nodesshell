@@ -7,12 +7,13 @@ setup_service() {
     cat > "${SERVICE_FILE}" << EOF
 [Unit]
 Description=Sing-box Proxy Service
-After=network.target
+After=network.target nss-lookup.target
 
 [Service]
 Type=simple
-ExecStart=${SING_BIN} run -c ${CONFIG_PATH} > ${LOG_DIR}/server.log 2>&1
+ExecStart=${SING_BIN} run -c ${CONFIG_PATH}
 Restart=on-failure
+RestartPreventExitStatus=23
 User=nobody
 Group=nogroup
 
@@ -105,7 +106,7 @@ start_service() {
         echo "✅ 服务已通过 systemctl 启动"
     else
         if ! pgrep -x "sing-box" > /dev/null; then
-            nohup ${SING_BIN} run -c ${CONFIG_PATH} > ${LOG_DIR}/server.log 2>&1 &
+            nohup ${SING_BIN} run -c ${CONFIG_PATH} &
             echo "✅ 服务已通过 nohup 启动"
         else
             echo "⚠️ 服务已在运行"
