@@ -3,6 +3,7 @@
 # 全局变量
 SS_BASE_PATH="/usr/local/etc/shadowsocks2022"
 CONFIG_PATH="${SS_BASE_PATH}/config.json"
+BASE_CONFIG_PATH="${SS_BASE_PATH}/base_config.json"
 USERS_PATH="${SS_BASE_PATH}/users.json"
 BACKUP_DIR="${SS_BASE_PATH}/backup"
 LOG_DIR="/var/log/shadowsocks2022"
