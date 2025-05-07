@@ -28,9 +28,9 @@ EOF
 # 检查服务状态
 check_service() {
     if systemctl is-active --quiet ${SERVICE_NAME}; then
-        echo "✅ ${SERVICE_NAME} 服务运行正常"
         # 显示 systemctl 的状态信息
         systemctl status ${SERVICE_NAME}
+        echo "✅ ${SERVICE_NAME} 服务运行正常"
         return 0
     else
         echo "❌ ${SERVICE_NAME} 服务运行异常"

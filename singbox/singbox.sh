@@ -104,6 +104,16 @@ function install_ss2022_multiuser() {
     echo "-------------------------------------------"
 }
 
+# 查看日志文件
+function view_logs() {
+    if [ -f "${LOG_PATH}" ]; then
+        echo "📜 查看日志文件：${LOG_PATH}"
+        tail -f 50 "${LOG_PATH}"
+    else
+        echo "⚠️ 日志文件不存在：${LOG_PATH}"
+    fi
+}
+
 # 主函数
 main() {
     case "$1" in
@@ -178,6 +188,9 @@ main() {
             show_config
             ;;
             
+        logs)
+            view_logs
+            ;;
         *)
             echo "用法: $0 <command> [args]"
             echo
@@ -211,6 +224,9 @@ main() {
             echo "  backup      备份配置"
             echo "  restore     还原配置"
             echo "  config      查看当前配置"
+            echo
+            echo "日志管理命令:"
+            echo "  logs        查看日志文件"
             exit 1
             ;;
     esac
