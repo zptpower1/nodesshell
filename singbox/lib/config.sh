@@ -78,6 +78,7 @@ sync_config() {
     # 合并基础配置和用户配置
     jq -s --argjson whitelist "$(printf '%s\n' "${!whitelist[@]}" | jq -R . | jq -s .)" \
         '.[0] * {"inbounds":[.[0].inbounds[] | select(.type as $type | $whitelist | index($type)) | select(.method as $method | test($whitelist[$type])) | .users = .[1].users]}' \
+        --argjson whitelist "$(printf '%s\n' "${!whitelist[@]}" | jq -R . | jq -s .)" \
         "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}"
     
     # 检查合并后的配置文件是否有效
