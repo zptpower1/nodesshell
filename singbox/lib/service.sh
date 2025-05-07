@@ -77,8 +77,8 @@ status_service() {
         lsof -i -P -n | grep sing-box
         echo
         echo "📜 最近日志："
-        if [ -f "${LOG_DIR}/sing-box.log" ]; then
-            tail -n 10 "${LOG_DIR}/sing-box.log"
+        if [ -f "${LOG_PATH}" ]; then
+            tail -n 10 "${LOG_PATH}"
         else
             echo "⚠️ 日志文件不存在"
         fi
