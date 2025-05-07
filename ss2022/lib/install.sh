@@ -2,6 +2,18 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
+# 获取最新版本号
+get_latest_version() {
+    echo "ℹ️ 正在获取最新版本号..."
+    curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
+}
+
+# 获取下载URL
+get_download_url() {
+    local version=$(get_latest_version)
+    echo "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
+}
+
 # 从二进制包安装
 install_from_binary() {
     local temp_dir="/tmp/ssrust"
@@ -21,19 +33,8 @@ install() {
     check_root
     echo "📦 开始安装 SS2022..."
     
-    if command -v apt-get &> /dev/null; then
-        echo "ℹ️ 尝试通过 apt 安装 shadowsocks-rust..."
-        apt-get update
-        if apt-get install -y shadowsocks-rust; then
-            echo "✅ 通过apt安装成功"
-        else
-            echo "📌 apt安装失败，尝试使用预编译二进制包安装..."
-            install_from_binary
-        fi
-    else
-        echo "ℹ️ 使用预编译二进制包安装..."
-        install_from_binary
-    fi
+    echo "ℹ️ 使用预编译二进制包安装..."
+    install_from_binary
     
     setup_service
     setup_config
