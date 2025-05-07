@@ -15,7 +15,6 @@ ExecStart=${SING_BIN} run -c ${CONFIG_PATH}
 Restart=on-failure
 RestartPreventExitStatus=23
 User=nobody
-Group=nogroup
 
 [Install]
 WantedBy=multi-user.target
