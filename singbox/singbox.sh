@@ -16,6 +16,13 @@ load_env
 function base_check() {
     check_root
     check_dependencies
+
+    # 确保配置目录存在
+    mkdir -p "${SING_BASE_PATH}"
+    # 确保日志目录存在
+    mkdir -p "${LOG_DIR}"
+    # 确保用于配置文件已存在
+    init_users_config
 }
 
 function install_ss2022_multiuser() {
