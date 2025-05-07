@@ -13,10 +13,8 @@ init_users_config() {
 generate_user_config() {
     local name="$1"
     # 生成16字节(32个十六进制字符)的密钥
-    local password=$(dd if=/dev/urandom bs=16 count=1 2>/dev/null | xxd -p -c 32)
-    # 将密码转换为 Base64 编码
-    local password_base64=$(echo -n "${password}" | base64)
-    echo "{\"name\":\"${name}\",\"password\":\"${password_base64}\"}"
+    local password=$(openssl rand -base64 16 | head -c 24)
+    echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
 }
 
 # 检查用户是否已存在
