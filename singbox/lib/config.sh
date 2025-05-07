@@ -5,19 +5,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 # 生成用户配置
 generate_user_config() {
     local name="$1"
-    local password=$(openssl rand -base64 16)
+    local password=$(openssl rand -base64 32)  # 修改为32字节的密钥
     echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
-}
-
-# 生成 PSK
-generate_psk() {
-    openssl rand -base64 32
 }
 
 # 创建基础配置
 create_config() {
     mkdir -p "${SING_BASE_PATH}"
-    local psk=$(generate_psk)
     cat > "${CONFIG_PATH}" << EOF
 {
   "log": {
@@ -31,7 +25,6 @@ create_config() {
       "listen": "::",
       "listen_port": ${DEFAULT_PORT},
       "method": "${DEFAULT_METHOD}",
-      "password": "${psk}",
       "users": [
         $(generate_user_config "user1"),
         $(generate_user_config "user2"),
