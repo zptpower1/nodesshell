@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 # 生成用户配置
 generate_user_config() {
     local name="$1"
-    local password=$(openssl rand -base64 32)  # 修改为32字节的密钥
+    local password=$(openssl rand -hex 16)  # 使用hex编码而不是base64
     echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
 }
 
@@ -25,6 +25,7 @@ create_config() {
       "listen": "::",
       "listen_port": ${DEFAULT_PORT},
       "method": "${DEFAULT_METHOD}",
+      "key": "$(openssl rand -hex 16)",
       "users": [
         $(generate_user_config "user1"),
         $(generate_user_config "user2"),
