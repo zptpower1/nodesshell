@@ -108,7 +108,7 @@ function install_ss2022_multiuser() {
 function view_logs() {
     if [ -f "${LOG_PATH}" ]; then
         echo "📜 查看日志文件：${LOG_PATH}"
-        tail -f 50 "${LOG_PATH}"
+        tail -50f "${LOG_PATH}"
     else
         echo "⚠️ 日志文件不存在：${LOG_PATH}"
     fi
