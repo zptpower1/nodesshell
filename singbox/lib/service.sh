@@ -126,6 +126,7 @@ start_service() {
     if [ -f "${SERVICE_FILE}" ]; then
         systemctl start ${SERVICE_NAME}
         echo "✅ 服务已启动"
+        check_service
     else
         echo "⚠️ 服务配置不存在"
     fi

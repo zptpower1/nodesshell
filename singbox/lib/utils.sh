@@ -91,5 +91,6 @@ generate_key() {
             ;;
     esac
 
-    openssl rand -base64 "$key_length" | head -c "$((key_length * 2))"
+    # openssl rand -base64 "$key_length" | head -c "$((key_length * 2))"
+    $SING_BIN generate rand $key_length --base64
 }
