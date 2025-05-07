@@ -56,7 +56,14 @@ function install_ss2022_multiuser() {
     # 继续安装流程
     install_sing_box
     create_config "$force"
-    add_user "admin"
+    
+    # 检查用户是否已存在
+    if ! check_user_exists "admin"; then
+        add_user "admin"
+    else
+        echo "✅ 用户 admin 已存在，跳过添加步骤"
+    fi
+
     sync_config
     setup_service
     check_service

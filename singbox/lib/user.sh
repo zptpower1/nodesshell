@@ -17,6 +17,12 @@ generate_user_config() {
     echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
 }
 
+# 检查用户是否已存在
+check_user_exists() {
+    local name="$1"
+    jq -e ".users[] | select(.name == \"${name}\")" "${USERS_PATH}" > /dev/null
+}
+
 # 添加用户
 add_user() {
     local name="$1"
@@ -94,19 +100,36 @@ generate_client_config() {
     echo "🔧 服务器配置 (来自 ${CONFIG_PATH})："
     local port=$(jq -r '.inbounds[0].listen_port' "${CONFIG_PATH}")
     local method=$(jq -r '.inbounds[0].method' "${CONFIG_PATH}")
+    local realpwd=$(jq -r '.inbounds[0].users[] | select(.name == \"${name}\") | .password' "${CONFIG_PATH}")
     if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
         echo "❌ 服务器配置读取失败"
         return 1
     fi
     local server_ip=$(get_server_ip)
+    local node_domain=$(source "$ENV_FILE" && echo "$NODEDOMAIN")
+    local node_name=$(source "$ENV_FILE" && echo "$NODENAME")
+    
+    if [[ -n "$node_domain" ]]; then
+        server_ip="$node_domain"
+        echo "📌 使用节点域名: $server_ip"
+    else
+        echo "📌 使用服务器 IP: $server_ip"
+    fi
+    
     echo "服务器: ${server_ip}"
     echo "端口: ${port}"
     echo "加密方法: ${method}"
+    echo "密码: ${realpwd}"
     echo
+    
+    # 对比两个密码
+    if [ "${password}" != "${realpwd}" ]; then
+        echo "⚠️ 警告: 用户配置和服务器配置中的密码不匹配！"
+    fi
     
     # 生成 URL
     echo "🔗 连接信息："
-    local ss_url="ss://${method}:${password}@${server_ip}:${port}#${name}"
+    local ss_url="ss://${method}:${realpwd}@${server_ip}:${port}#${node_name:-$name}"
     echo "Shadowsocks URL: ${ss_url}"
     echo "-------------------------------------------"
 
