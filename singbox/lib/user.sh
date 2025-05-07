@@ -101,7 +101,7 @@ generate_client_config() {
     echo "🔧 服务器配置 (来自 ${CONFIG_PATH})："
     local port=$(jq -r '.inbounds[0].listen_port' "${CONFIG_PATH}")
     local method=$(jq -r '.inbounds[0].method' "${CONFIG_PATH}")
-    local realpwd=$(jq -r '.inbounds[0].users[] | select(.name == '"${name}"') | .password' "${CONFIG_PATH}")
+    local realpwd=$(jq -r ".inbounds[0].users[] | select(.name == \"${name}\") | .password" "${CONFIG_PATH}")
     if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
         echo "❌ 服务器配置读取失败"
         return 1
