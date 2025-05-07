@@ -5,13 +5,16 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 # 生成用户配置
 generate_user_config() {
     local name="$1"
-    local password=$(openssl rand -hex 16)  # 使用hex编码而不是base64
+    # 生成32字节(64个十六进制字符)的密钥
+    local password=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64)
     echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
 }
 
 # 创建基础配置
 create_config() {
     mkdir -p "${SING_BASE_PATH}"
+    # 生成32字节(64个十六进制字符)的主密钥
+    local server_key=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64)
     cat > "${CONFIG_PATH}" << EOF
 {
   "log": {
@@ -25,7 +28,7 @@ create_config() {
       "listen": "::",
       "listen_port": ${DEFAULT_PORT},
       "method": "${DEFAULT_METHOD}",
-      "psk": "$(openssl rand -hex 16)",
+      "password": "${server_key}",
       "users": [
         $(generate_user_config "user1"),
         $(generate_user_config "user2"),
