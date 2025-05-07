@@ -1,4 +1,7 @@
 #!/bin/bash
+set -e
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
 # 加载所有模块
 source "$SCRIPT_DIR/lib/utils.sh"
