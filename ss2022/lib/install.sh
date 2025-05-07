@@ -52,7 +52,7 @@ uninstall() {
     rm -f "${SERVICE_FILE}" "${CONFIG_PATH}" "${USERS_PATH}" "${SS_BIN}"
     rm -rf "${SS_BASE_PATH}" "${LOG_DIR}"
     
-    rm -f "${SCRIPT_DIR}/ss2022_config" "${SCRIPT_DIR}/ss2022_logs"
+    rm -f "${SCRIPT_DIR}/configs" "${SCRIPT_DIR}/logs"
     
     echo "✅ 卸载完成。"
 }

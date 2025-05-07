@@ -31,27 +31,6 @@ get_download_url() {
     echo "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
 }
 
-# 创建软链接
-create_symlinks() {
-    echo "🔗 正在创建软链接..."
-    
-    # 创建配置目录软链接
-    if [ -d "${SS_BASE_PATH}" ]; then
-        ln -sf "${SS_BASE_PATH}" "${SCRIPT_DIR}/ss2022_config"
-        echo "✅ 软链接 ss2022_config 创建成功"
-    else
-        echo "⚠️ 目标路径 ${SS_BASE_PATH} 不存在，无法创建软链接"
-    fi
-    
-    # 创建日志目录软链接
-    if [ -d "${LOG_DIR}" ]; then
-        ln -sf "${LOG_DIR}" "${SCRIPT_DIR}/ss2022_logs"
-        echo "✅ 软链接 ss2022_logs 创建成功"
-    else
-        echo "⚠️ 目标路径 ${LOG_DIR} 不存在，无法创建软链接"
-    fi
-}
-
 # 安装服务
 install() {
     check_root
@@ -131,102 +110,6 @@ EOF
     systemctl enable "${SERVICE_NAME}"
     systemctl start "${SERVICE_NAME}"
     echo "✅ 服务设置完成"
-}
-
-# 卸载服务
-uninstall() {
-    check_root
-    echo "⚠️ 即将卸载 SS2022，并删除其所有配置文件和程序。"
-    
-    # 停止和禁用服务
-    systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
-    systemctl disable "${SERVICE_NAME}" 2>/dev/null || true
-    
-    # 删除文件和目录
-    rm -f "${SERVICE_FILE}" "${CONFIG_PATH}" "${USERS_PATH}" "${SS_BIN}"
-    rm -rf "${SS_BASE_PATH}" "${LOG_DIR}"
-    
-    # 删除软链接
-    rm -f "${SCRIPT_DIR}/ss2022_config" "${SCRIPT_DIR}/ss2022_logs"
-    
-    echo "✅ 卸载完成。"
-}
-
-# 用户管理
-add_user() {
-    check_root
-    local username="$1"
-    if [ -z "${username}" ]; then
-        echo "❌ 请提供用户名"
-        return 1
-    fi
-    
-    local uuid=$(uuidgen)
-    mkdir -p "${SS_BASE_PATH}"
-    
-    if [ ! -f "${USERS_PATH}" ]; then
-        echo '{"users":{}}' > "${USERS_PATH}"
-    fi
-    
-    # 使用临时文件来更新JSON
-    local temp_file=$(mktemp)
-    jq ".users[\"${username}\"] = {\"uuid\": \"${uuid}\"}" "${USERS_PATH}" > "${temp_file}"
-    mv "${temp_file}" "${USERS_PATH}"
-    
-    echo "✅ 用户 ${username} 添加成功，UUID: ${uuid}"
-}
-
-del_user() {
-    check_root
-    local username="$1"
-    if [ -z "${username}" ]; then
-        echo "❌ 请提供用户名"
-        return 1
-    fi
-    
-    if [ ! -f "${USERS_PATH}" ]; then
-        echo "❌ 用户文件不存在"
-        return 1
-    fi
-    
-    # 使用临时文件来更新JSON
-    local temp_file=$(mktemp)
-    jq "del(.users[\"${username}\"])" "${USERS_PATH}" > "${temp_file}"
-    mv "${temp_file}" "${USERS_PATH}"
-    
-    echo "✅ 用户 ${username} 删除成功"
-}
-
-list_users() {
-    check_root
-    if [ ! -f "${USERS_PATH}" ]; then
-        echo "❌ 用户文件不存在"
-        return 1
-    fi
-    
-    echo "📋 当前用户列表："
-    jq -r '.users | to_entries[] | "用户: \(.key), UUID: \(.value.uuid)"' "${USERS_PATH}"
-}
-
-query_user() {
-    check_root
-    local username="$1"
-    if [ -z "${username}" ]; then
-        echo "❌ 请提供用户名"
-        return 1
-    fi
-    
-    if [ ! -f "${USERS_PATH}" ]; then
-        echo "❌ 用户文件不存在"
-        return 1
-    fi
-    
-    local user_info=$(jq -r ".users[\"${username}\"].uuid" "${USERS_PATH}")
-    if [ "${user_info}" != "null" ]; then
-        echo "用户: ${username}, UUID: ${user_info}"
-    else
-        echo "❌ 用户 ${username} 不存在"
-    fi
 }
 
 # 获取所有模块

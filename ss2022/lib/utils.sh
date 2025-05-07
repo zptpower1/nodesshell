@@ -35,15 +35,15 @@ create_symlinks() {
     echo "🔗 正在创建软链接..."
     
     if [ -d "${SS_BASE_PATH}" ]; then
-        ln -sf "${SS_BASE_PATH}" "${SCRIPT_DIR}/ss2022_config"
-        echo "✅ 软链接 ss2022_config 创建成功"
+        ln -sf "${SS_BASE_PATH}" "${SCRIPT_DIR}/configs"
+        echo "✅ 软链接 configs 创建成功"
     else
         echo "⚠️ 目标路径 ${SS_BASE_PATH} 不存在，无法创建软链接"
     fi
     
     if [ -d "${LOG_DIR}" ]; then
-        ln -sf "${LOG_DIR}" "${SCRIPT_DIR}/ss2022_logs"
-        echo "✅ 软链接 ss2022_logs 创建成功"
+        ln -sf "${LOG_DIR}" "${SCRIPT_DIR}/logs"
+        echo "✅ 软链接 logs 创建成功"
     else
         echo "⚠️ 目标路径 ${LOG_DIR} 不存在，无法创建软链接"
     fi
