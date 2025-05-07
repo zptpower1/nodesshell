@@ -138,3 +138,19 @@ show_config() {
         echo "❌ 配置文件不存在"
     fi
 }
+
+# 检查配置文件
+check_config() {
+    if [ ! -f "${CONFIG_PATH}" ]; then
+        echo "❌ 配置文件不存在"
+        return 1
+    fi
+
+    # 使用 sing-box 检查配置文件
+    if ! $SING_BIN check -c "${CONFIG_PATH}" >/dev/null 2>&1; then
+        echo "❌ 配置文件格式无效"
+        return 1
+    fi
+
+    echo "✅ 配置文件有效"
+}

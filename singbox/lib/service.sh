@@ -102,33 +102,35 @@ status_service() {
 # 启动服务
 start_service() {
     echo "🚀 启动服务..."
-    if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
-        systemctl start ${SERVICE_NAME}
-        echo "✅ 服务已通过 systemctl 启动"
-    else
-        if ! pgrep -x "sing-box" > /dev/null; then
-            nohup ${SING_BIN} run -c ${CONFIG_PATH} &
-            echo "✅ 服务已通过 nohup 启动"
-        else
-            echo "⚠️ 服务已在运行"
-        fi
-    fi
+    systemctl start ${SERVICE_NAME}
+    # if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
+    #     systemctl start ${SERVICE_NAME}
+    #     echo "✅ 服务已通过 systemctl 启动"
+    # else
+    #     if ! pgrep -x "sing-box" > /dev/null; then
+    #         nohup ${SING_BIN} run -c ${CONFIG_PATH} &
+    #         echo "✅ 服务已通过 nohup 启动"
+    #     else
+    #         echo "⚠️ 服务已在运行"
+    #     fi
+    # fi
 }
 
 # 停止服务
 stop_service() {
     echo "🛑 停止服务..."
-    if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
-        systemctl stop ${SERVICE_NAME}
-        echo "✅ 服务已通过 systemctl 停止"
-    else
-        if pgrep -x "sing-box" > /dev/null; then
-            kill $(pgrep -x "sing-box")
-            echo "✅ 服务已通过 kill 停止"
-        else
-            echo "⚠️ 服务未运行"
-        fi
-    fi
+    systemctl stop ${SERVICE_NAME}
+    # if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
+    #     systemctl stop ${SERVICE_NAME}
+    #     echo "✅ 服务已通过 systemctl 停止"
+    # else
+    #     if pgrep -x "sing-box" > /dev/null; then
+    #         kill $(pgrep -x "sing-box")
+    #         echo "✅ 服务已通过 kill 停止"
+    #     else
+    #         echo "⚠️ 服务未运行"
+    #     fi
+    # fi
 }
 
 # 禁用服务

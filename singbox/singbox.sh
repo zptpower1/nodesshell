@@ -188,6 +188,9 @@ main() {
         config)
             show_config
             ;;
+        check_config)
+            check_config
+            ;;
             
         logs)
             view_logs
@@ -225,6 +228,7 @@ main() {
             echo "  backup      备份配置"
             echo "  restore     还原配置"
             echo "  config      查看当前配置"
+            echo "  check_config 检查配置文件"
             echo
             echo "日志管理命令:"
             echo "  logs        查看日志文件"
