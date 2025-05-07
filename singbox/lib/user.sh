@@ -102,6 +102,7 @@ generate_client_config() {
     echo "🔧 服务器配置 (来自 ${CONFIG_PATH})："
     local port=$(jq -r '.inbounds[0].listen_port' "${CONFIG_PATH}")
     local method=$(jq -r '.inbounds[0].method' "${CONFIG_PATH}")
+    local server_key=$(jq -r '.inbounds[0].password' "${CONFIG_PATH}")
     local realpwd=$(jq -r ".inbounds[0].users[] | select(.name == \"${name}\") | .password" "${CONFIG_PATH}")
     if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
         echo "❌ 服务器配置读取失败"
@@ -121,7 +122,8 @@ generate_client_config() {
     echo "服务器: ${server_ip}"
     echo "端口: ${port}"
     echo "加密方法: ${method}"
-    echo "密码: ${realpwd}"
+    echo "用户密码: ${realpwd}"
+    echo "服务密码: ${server_key}"
     echo
     
     # 对比两个密码
@@ -131,7 +133,7 @@ generate_client_config() {
     
     # 生成 URL
     echo "🔗 连接信息："
-    local config="${method}:${realpwd}@${server_ip}:${port}"
+    local config="${method}:${server_key}%3A${realpwd}@${server_ip}:${port}"
     local ss_url="ss://${config}#${node_name:-$name}"
 
     local config_base64=$(echo -n "${config}" | base64 -w 0)
