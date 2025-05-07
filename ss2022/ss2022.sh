@@ -1,31 +1,18 @@
 #!/bin/bash
 
-# 获取脚本所在目录的绝对路径
-SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-SS_BASE_PATH="/usr/local/etc/shadowsocks2022"
-CONFIG_PATH="${SS_BASE_PATH}/config.json"
-BASE_CONFIG_PATH="${SS_BASE_PATH}/base_config.json"
-USERS_PATH="${SS_BASE_PATH}/users.json"
-BACKUP_DIR="${SS_BASE_PATH}/backup"
-LOG_DIR="/var/log/shadowsocks2022"
-SERVICE_NAME="shadowsocks2022"
-SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-SS_BIN="/usr/local/bin/ssserver"
+# 加载所有模块
+source "$SCRIPT_DIR/lib/utils.sh"
 
-# 检查root权限
-check_root() {
-    if [ "$(id -u)" != "0" ]; then
-        echo "❌ 此脚本需要以 root 权限运行"
-        exit 1
-    fi
-}
+# 检查环境文件
+load_env
 
-# 获取所有模块
-source "${SCRIPT_DIR}/lib/utils.sh"
+# 加载其他模块
 source "${SCRIPT_DIR}/lib/install.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/service.sh"
 source "${SCRIPT_DIR}/lib/user.sh"
+
+
 
 # 主函数
 main() {

@@ -6,48 +6,23 @@ CONFIG_PATH="${SS_BASE_PATH}/config.json"
 USERS_PATH="${SS_BASE_PATH}/users.json"
 BACKUP_DIR="${SS_BASE_PATH}/backup"
 LOG_DIR="/var/log/shadowsocks2022"
+SS_BIN="/usr/local/bin/ssserver"
 SERVICE_NAME="shadowsocks2022"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-SS_BIN="/usr/local/bin/ssserver"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="$SCRIPT_DIR/.env"
+MAX_RESULTS=10
 
 # 检查root权限
-check_root() {
-    if [ "$(id -u)" != "0" ]; then
-        echo "❌ 此脚本需要以 root 权限运行"
-        exit 1
-    fi
-}
-
-# 获取最新版本号
-get_latest_version() {
-    local version
-    version=$(curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    if [ -z "$version" ]; then
-        echo "v1.15.3"
-        return 1
-    fi
-    echo "$version"
-    return 0
-}
-
-# 获取下载URL
-get_download_url() {
-    local version=$(get_latest_version)
-    local status=$?
-    local download_url
-    
-    if [ $status -ne 0 ]; then
-        echo >&2 "⚠️ 获取版本号失败，使用默认版本：${version}"
-    else
-        echo >&2 "✅ 获取到最新版本：${version}"
-    fi
-    
-    download_url="https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
-    echo "${download_url}"
+function check_root() {
+  if [[ $EUID -ne 0 ]]; then
+    echo "❌ 此脚本需要以 root 权限运行，请使用 sudo 或切换到 root 用户。"
+    exit 1
+  fi
 }
 
 # 创建软链接
-create_symlinks() {
+function create_symlinks() {
     echo "🔗 正在创建软链接..."
     
     if [ -d "${SS_BASE_PATH}" ]; then
@@ -63,4 +38,33 @@ create_symlinks() {
     else
         echo "⚠️ 目标路径 ${LOG_DIR} 不存在，无法创建软链接"
     fi
+}
+
+# 加载环境变量
+function load_env() {
+  #echo "🔍 调试：ENV_FILE 路径为 $ENV_FILE"
+  if [[ ! -f "$ENV_FILE" ]]; then
+    echo "🔍 调试：.env 文件不存在"
+    echo "❌ 错误：未找到 .env 文件，该文件必须存在于脚本同级目录。"
+    echo "请创建 .env 文件并配置以下内容："
+    echo "NODENAME=your-node-name"
+    echo "NODEDOMAIN=your-domain.com (可选)"
+    exit 1
+  fi
+
+  #echo "🔍 调试：.env 文件存在，准备读取"
+  source "$ENV_FILE"
+  #echo "🔍 调试：.env 文件内容："
+  #cat "$ENV_FILE"
+
+  if [[ -z "$NODENAME" ]]; then
+    echo "🔍 调试：NODENAME 变量为空"
+    echo "❌ 错误：.env 文件中必须设置 NODENAME 变量。"
+    exit 1
+  fi
+
+  #echo "📌 从 .env 文件读取节点名称: $NODENAME"
+  if [[ -n "$NODEDOMAIN" ]]; then
+    echo "📌 从 .env 文件读取节点域名: $NODEDOMAIN"
+  fi
 }
