@@ -3,7 +3,7 @@
 # 全局变量
 SING_BASE_PATH="/usr/local/etc/sing-box"
 CONFIG_PATH="${SING_BASE_PATH}/config.json"
-BASE_CONFIG_PATH="${SB_BASE_PATH}/base_config.json"
+BASE_CONFIG_PATH="${SING_BASE_PATH}/base_config.json"
 USERS_PATH="${SING_BASE_PATH}/users.json"
 BACKUP_DIR="${SING_BASE_PATH}/backup"
 LOG_DIR="/var/log/sing-box"
@@ -41,34 +41,6 @@ check_dependencies() {
         fi
     done
 }
-
-
-# 检查服务状态
-check_service() {
-    echo "🔍 Sing-box 服务状态："
-    if pgrep -x "sing-box" > /dev/null; then
-        echo "✅ 服务正在运行"
-        echo
-        echo "📊 进程信息："
-        ps aux | grep sing-box | grep -v grep
-        echo
-        echo "🔌 监听端口："
-        lsof -i -P -n | grep sing-box
-        echo
-        echo "📈 资源使用："
-        top -b -n 1 | grep sing-box
-        echo
-        echo "📜 最近日志："
-        if [ -f "${LOG_DIR}/sing-box.log" ]; then
-            tail -n 10 "${LOG_DIR}/sing-box.log"
-        else
-            echo "❌ 日志文件不存在"
-        fi
-    else
-        echo "❌ 服务未运行"
-    fi
-}
-
 
 # 加载环境变量
 function load_env() {
