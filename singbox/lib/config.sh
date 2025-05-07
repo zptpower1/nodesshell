@@ -29,16 +29,28 @@ create_config() {
   "log": {
     "level": "info",
     "output": "${LOG_PATH}",
-    "timestamp": true
+    "timestamp": true,
+    "disabled": false
   },
   "inbounds": [
     {
       "type": "shadowsocks",
-      "tag": "ss-in",
+      "tag": "ss-brutal-sb-in",
       "listen": "::",
       "listen_port": ${SERVER_PORT},
+      "sniff": true,
+      "sniff_override_destination": true,
       "method": "${SERVER_METHOD}",
-      "password": "${server_key}"
+      "password": "${server_key}",
+      "multiplex": {
+        "enabled": true,    
+        "padding": true,
+        "brutal": {
+          "enabled": true,
+          "up_mbps": 600,
+          "down_mbps": 600
+        }
+      }
     }
   ],
   "outbounds": [
