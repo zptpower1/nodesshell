@@ -21,13 +21,30 @@ check_root() {
 # 获取最新版本号
 get_latest_version() {
     echo "ℹ️ 正在获取最新版本号..."
-    curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
+    local version
+    version=$(curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$version" ]; then
+        echo "v1.15.3"
+        return 1
+    fi
+    echo "$version"
+    return 0
 }
 
 # 获取下载URL
 get_download_url() {
     local version=$(get_latest_version)
-    echo "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
+    local status=$?
+    local download_url
+    
+    if [ $status -ne 0 ]; then
+        echo >&2 "⚠️ 获取版本号失败，使用默认版本：${version}"
+    else
+        echo >&2 "✅ 获取到最新版本：${version}"
+    fi
+    
+    download_url="https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
+    echo "${download_url}"
 }
 
 # 创建软链接
