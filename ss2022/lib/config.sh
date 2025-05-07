@@ -2,6 +2,11 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
+# 生成 PSK
+generate_psk() {
+    openssl rand -base64 32
+}
+
 # 设置配置文件
 setup_config() {
     mkdir -p "${SS_BASE_PATH}"
@@ -37,13 +42,15 @@ setup_config() {
     echo "📌 IP 协议支持已设置"
     
     # 创建配置文件
+    local psk=$(generate_psk)
     cat > "${BASE_CONFIG_PATH}" << EOF
 {
     "server": ${SERVER_IP},
     "server_port": ${SERVER_PORT},
     "mode": "tcp_and_udp",
     "timeout": 300,
-    "method": "${METHOD}"
+    "method": "${METHOD}",
+    "password": "${psk}"
 }
 EOF
     echo "✅ 基础配置文件创建成功"
