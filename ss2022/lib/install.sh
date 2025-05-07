@@ -4,13 +4,16 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 获取最新版本号
 get_latest_version() {
-    echo "ℹ️ 正在获取最新版本号..."
-    curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
+    curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v1.15.3"
 }
 
 # 获取下载URL
 get_download_url() {
     local version=$(get_latest_version)
+    if [ -z "$version" ]; then
+        echo "❌ 获取版本号失败，使用默认版本 v1.15.3"
+        version="v1.15.3"
+    fi
     echo "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
 }
 
@@ -19,13 +22,26 @@ install_from_binary() {
     local temp_dir="/tmp/ssrust"
     local download_url=$(get_download_url)
     
+    if [ -z "$download_url" ]; then
+        echo "❌ 获取下载链接失败"
+        return 1
+    fi
+    
     mkdir -p "${temp_dir}"
     echo "📥 下载预编译包..."
-    wget "${download_url}" -O "${temp_dir}/ss.tar.xz"
+    if ! wget -q "$download_url" -O "${temp_dir}/ss.tar.xz"; then
+        echo "❌ 下载失败"
+        return 1
+    fi
     
     echo "📦 解压安装..."
-    tar -xf "${temp_dir}/ss.tar.xz" -C "/usr/local/bin/"
+    if ! tar -xf "${temp_dir}/ss.tar.xz" -C "/usr/local/bin/"; then
+        echo "❌ 解压失败"
+        return 1
+    fi
+    
     chmod +x "${SS_BIN}"
+    rm -rf "${temp_dir}"
 }
 
 # 安装服务
