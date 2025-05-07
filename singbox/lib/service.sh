@@ -11,7 +11,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${SING_BIN} run -c ${CONFIG_PATH}
+ExecStart=${SING_BIN} run -c ${CONFIG_PATH} -v > ${LOG_DIR}/server.log 2>&1
 Restart=on-failure
 User=nobody
 Group=nogroup
@@ -95,4 +95,63 @@ status_service() {
         echo
         echo "⚠️ 配置文件不存在"
     fi
+}
+
+# 启动服务
+start_service() {
+    echo "🚀 启动服务..."
+    if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
+        systemctl start ${SERVICE_NAME}
+        echo "✅ 服务已通过 systemctl 启动"
+    else
+        if ! pgrep -x "sing-box" > /dev/null; then
+            nohup ${SING_BIN} run -c ${CONFIG_PATH} -v > ${LOG_DIR}/server.log 2>&1 &
+            echo "✅ 服务已通过 nohup 启动"
+        else
+            echo "⚠️ 服务已在运行"
+        fi
+    fi
+}
+
+# 停止服务
+stop_service() {
+    echo "🛑 停止服务..."
+    if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
+        systemctl stop ${SERVICE_NAME}
+        echo "✅ 服务已通过 systemctl 停止"
+    else
+        if pgrep -x "sing-box" > /dev/null; then
+            kill $(pgrep -x "sing-box")
+            echo "✅ 服务已通过 kill 停止"
+        else
+            echo "⚠️ 服务未运行"
+        fi
+    fi
+}
+
+# 禁用服务
+disable_service() {
+    echo "🔒 禁用服务..."
+    if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
+        systemctl disable ${SERVICE_NAME}
+        echo "✅ 服务已通过 systemctl 禁用"
+    else
+        if pgrep -x "sing-box" > /dev/null; then
+            stop_service
+        fi
+        
+        if [ -f "${SERVICE_FILE}" ]; then
+            rm -f "${SERVICE_FILE}"
+            echo "✅ 服务已禁用"
+        else
+            echo "⚠️ 服务配置不存在"
+        fi
+    fi
+}
+
+# 重启服务
+restart_service() {
+    echo "🔄 重启服务..."
+    stop_service
+    start_service
 }

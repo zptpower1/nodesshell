@@ -53,24 +53,18 @@ upgrade_sing_box() {
     fi
     
     # 备份当前配置
-    local backup_dir="${SING_BASE_PATH}/backup/$(date +%Y%m%d_%H%M%S)"
-    mkdir -p "${backup_dir}"
-    if [ -f "${CONFIG_PATH}" ]; then
-        cp "${CONFIG_PATH}" "${backup_dir}/"
-    fi
+    backup_config
     
     # 停止服务
-    if pgrep -x "sing-box" > /dev/null; then
-        kill $(pgrep -x "sing-box")
-    fi
+    stop_service
     
     # 安装新版本
     install_sing_box
     
     # 恢复配置
-    if [ -f "${backup_dir}/config.json" ]; then
-        cp "${backup_dir}/config.json" "${CONFIG_PATH}"
-    fi
+    # if [ -f "${backup_dir}/config.json" ]; then
+    #     cp "${backup_dir}/config.json" "${CONFIG_PATH}"
+    # fi
     
     # 重启服务
     nohup "${SING_BIN}" run -c "${CONFIG_PATH}" > /dev/null 2>&1 &
