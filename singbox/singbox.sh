@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/lib/utils.sh"
 source "${SCRIPT_DIR}/lib/install.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/service.sh"
-source "${SCRIPT_DIR}/lib/user.sh"
+# source "${SCRIPT_DIR}/lib/user.sh"
 
 # 检查环境文件
 load_env
