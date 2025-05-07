@@ -62,7 +62,7 @@ function del_user() {
     if [ "${username}" = "admin" ]; then
         echo "❌ 不能删除管理员用户"
         return 1
-    }
+    fi
     
     if [ ! -f "${USERS_PATH}" ]; then
         echo "❌ 用户文件不存在"
@@ -73,7 +73,7 @@ function del_user() {
     if ! jq -e ".users[\"${username}\"]" "${USERS_PATH}" >/dev/null 2>&1; then
         echo "❌ 用户 ${username} 不存在"
         return 1
-    }
+    fi
     
     # 更新用户数据文件
     local temp_users_file=$(mktemp)
