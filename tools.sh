@@ -109,14 +109,14 @@ monitor_logs() {
     
     if [ -f "/var/log/syslog" ]; then
         echo "📄 正在监听 /var/log/syslog ..."
-        tail -f /var/log/syslog &
+        tail -f /var/log/syslog
     else
         echo "⚠️ /var/log/syslog 文件不存在"
     fi
     
     if [ -f "/var/log/messages" ]; then
         echo "📄 正在监听 /var/log/messages ..."
-        tail -f /var/log/messages &
+        tail -f /var/log/messages
     else
         echo "⚠️ /var/log/messages 文件不存在"
     fi

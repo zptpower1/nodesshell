@@ -14,7 +14,7 @@ create_config() {
     
     # 检查基础配置文件是否已存在
     if [ -f "${BASE_CONFIG_PATH}" ] && [ "$force" != "force" ]; then
-        echo "⚠️ 基础配置文件已存在，跳过创建"
+        echo "✅ 基础配置文件已存在，跳过创建"
         return 0
     fi
     

@@ -31,10 +31,11 @@ allow_firewall() {
     # 配置防火墙规则
     echo "🛡️ 配置防火墙规则..."
     if command -v ufw >/dev/null 2>&1; then
+        echo "使用 ufw 配置防火墙规则..."
         ufw allow "${SERVER_PORT}"/tcp
         ufw allow "${SERVER_PORT}"/udp
-    fi
-    if command -v iptables >/dev/null 2>&1; then
+    else
+        echo "ufw 不可用，使用 iptables 配置防火墙规则..."
         iptables -C INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
         iptables -I INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT
         iptables -C INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
