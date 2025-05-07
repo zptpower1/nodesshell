@@ -146,11 +146,15 @@ check_config() {
         return 1
     fi
 
-    # 使用 sing-box 检查配置文件
-    if ! $SING_BIN check -c "${CONFIG_PATH}" >/dev/null 2>&1; then
+    # 使用 sing-box 检查配置文件，并将错误输出到临时文件
+    local temp_log=$(mktemp)
+    if ! $SING_BIN check -c "${CONFIG_PATH}" 2> "${temp_log}"; then
         echo "❌ 配置文件格式无效"
+        cat "${temp_log}"  # 打印具体的错误信息
+        rm -f "${temp_log}"
         return 1
     fi
 
+    rm -f "${temp_log}"
     echo "✅ 配置文件有效"
 }
