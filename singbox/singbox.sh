@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/lib/utils.sh"
 source "${SCRIPT_DIR}/lib/install.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/service.sh"
-# source "${SCRIPT_DIR}/lib/user.sh"
+source "${SCRIPT_DIR}/lib/user.sh"
 
 # 检查环境文件
 load_env
@@ -21,9 +21,10 @@ function base_check() {
 function install_ss2022_multiuser() {
     install_sing_box
     create_config
+    add_user "admin"
     setup_service
     check_service
-    generate_client_configs
+    # generate_client_configs
 }
 
 # 主函数
@@ -44,6 +45,18 @@ main() {
         # 卸载命令
         uninstall)
             uninstall_sing_box
+            ;;
+         # 用户管理命令
+        add)
+            add_user "$2"
+            restart_service
+            ;;
+        del)
+            delete_user "$2"
+            restart_service
+            ;;
+        list)
+            list_users
             ;;
             
         # 服务管理命令
