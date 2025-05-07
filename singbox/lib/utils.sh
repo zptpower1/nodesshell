@@ -111,7 +111,7 @@ generate_random_port() {
             echo "⚠️ 端口已被占用: $port"
         fi
     done
-    echo "$port"
+    echo "$port"  # 通过 echo 返回端口号
 }
 
 # 配置防火墙规则

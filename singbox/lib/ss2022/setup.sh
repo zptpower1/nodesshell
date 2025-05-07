@@ -3,7 +3,7 @@ source "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/protocol.sh"
 
 function setup_protocol() {
-    local default_port=$(generate_random_port)
+    local default_port=$(generate_random_port 2>/dev/null)
     local default_method="2022-blake3-aes-128-gcm"
     local port
     local method
