@@ -4,7 +4,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 
 # 创建基础配置
-create_config() {
+create_base_config() {
     # 检查目录是否存在，不存在则创建
     if [ ! -d "${SING_BASE_PATH}" ]; then
         mkdir -p "${SING_BASE_PATH}"

@@ -102,7 +102,7 @@ generate_random_port() {
         port=$((RANDOM % 1000 + 50000))  # 生成50000到51000之间的随机端口
         if ! lsof -i:"$port" &>/dev/null; then
             if ! jq -e ".inbounds[] | select(.listen_port == $port)" "$CONFIG_PATH" &>/dev/null; then
-                echo "✅ 可用端口: $port"
+                echo "✅ 端口可用: $port"
                 break
             else
                 echo "⚠️ 配置文件中已存在端口: $port"

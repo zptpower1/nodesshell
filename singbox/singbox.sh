@@ -37,82 +37,9 @@ function base_check() {
     init_users_config
 }
 
-function install_ss2022_multiuser() {
-    local force="$1"
-    local port="$2"
-    local method="$3"
-    
-    # 设置默认值
-    if [ -z "$port" ]; then
-        read -p "请输入端口号 [默认: ${SERVER_PORT}]: " port
-        port=${port:-${SERVER_PORT}}
-    fi
-    
-    if [ -z "$method" ]; then
-        echo "可用的加密方式:"
-        echo "1) 2022-blake3-aes-128-gcm (默认)"
-        echo "2) 2022-blake3-aes-256-gcm"
-        echo "3) 2022-blake3-chacha20-poly1305"
-        read -p "请选择加密方式 [1-3]: " method_choice
-        
-        case $method_choice in
-            2) method="2022-blake3-aes-256-gcm";;
-            3) method="2022-blake3-chacha20-poly1305";;
-            *) method="${SERVER_METHOD}";;
-        esac
-    fi
-    
-    # 验证端口号
-    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-        echo "❌ 无效的端口号: ${port}"
-        return 1
-    fi
-    
-    # 设置环境变量
-    export SERVER_PORT="$port"
-    export SERVER_METHOD="$method"
-    
-    # 继续安装流程
-    install_sing_box
-    create_config "$force"
-    
-    # 检查用户是否已存在
-    if ! check_user_exists "admin"; then
-        add_user "admin"
-    else
-        echo "✅ 用户 admin 已存在，跳过添加步骤"
-    fi
-
-    allow_firewall
-    setup_service
-    check_service
-    
-    # 创建配置目录软链接
-    if [ ! -L "$SCRIPT_DIR/configs" ]; then
-        ln -s "$SING_BASE_PATH" "$SCRIPT_DIR/configs"
-        echo "✅ 创建配置目录软链接: $SING_BASE_PATH -> $SCRIPT_DIR/configs"
-    fi
-    
-    # 创建日志目录软链接
-    if [ ! -L "$SCRIPT_DIR/logs" ]; then
-        ln -s "${LOG_DIR}" "$SCRIPT_DIR/logs" 
-        echo "✅ 创建日志目录软链接: $LOG_DIR -> $SCRIPT_DIR/logs"
-    fi
-    
-    # 显示安装信息
-    echo
-    echo "✅ 安装完成！"
-    echo "-------------------------------------------"
-    echo "端口: ${port}"
-    echo "加密方式: ${method}"
-    echo "配置目录: ${SCRIPT_DIR}/configs"
-    echo "日志目录: ${SCRIPT_DIR}/logs"
-    echo "-------------------------------------------"
-}
-
 function install_singbox_only() {
     install_sing_box
-    create_config "$1"
+    create_base_config
 }
 
 # 查看日志文件
