@@ -10,6 +10,7 @@ LOG_DIR="/var/log/sing-box"
 SING_BIN="/usr/local/bin/sing-box"
 SERVICE_NAME="sing-box"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+ENV_FILE="$SCRIPT_DIR/.env"
 
 # 默认配置
 DEFAULT_PORT=7388
