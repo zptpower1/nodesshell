@@ -20,7 +20,6 @@ check_root() {
 
 # 获取最新版本号
 get_latest_version() {
-    echo "ℹ️ 正在获取最新版本号..."
     local version
     version=$(curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     if [ -z "$version" ]; then
