@@ -4,16 +4,27 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 获取最新版本号
 get_latest_version() {
-    curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v1.15.3"
+    local version
+    version=$(curl -s "https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$version" ]; then
+        echo "v1.15.3"
+        return 1
+    fi
+    echo "$version"
+    return 0
 }
 
 # 获取下载URL
 get_download_url() {
     local version=$(get_latest_version)
-    if [ -z "$version" ]; then
-        echo "❌ 获取版本号失败，使用默认版本 v1.15.3"
-        version="v1.15.3"
+    local status=$?
+    
+    if [ $status -ne 0 ]; then
+        echo "⚠️ 获取版本号失败，使用默认版本：${version}"
+    else
+        echo "✅ 获取到最新版本：${version}"
     fi
+    
     echo "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
 }
 
@@ -22,26 +33,45 @@ install_from_binary() {
     local temp_dir="/tmp/ssrust"
     local download_url=$(get_download_url)
     
-    if [ -z "$download_url" ]; then
-        echo "❌ 获取下载链接失败"
+    echo "🔗 下载地址：${download_url}"
+    
+    mkdir -p "${temp_dir}"
+    echo "📥 开始下载预编译包..."
+    
+    if ! wget -q "$download_url" -O "${temp_dir}/ss.tar.xz"; then
+        echo "❌ 下载失败，请检查："
+        echo "  1. 网络连接是否正常"
+        echo "  2. 是否可以访问 GitHub"
+        echo "  3. 下载地址是否有效"
+        rm -rf "${temp_dir}"
         return 1
     fi
     
-    mkdir -p "${temp_dir}"
-    echo "📥 下载预编译包..."
-    if ! wget -q "$download_url" -O "${temp_dir}/ss.tar.xz"; then
-        echo "❌ 下载失败"
+    if [ ! -s "${temp_dir}/ss.tar.xz" ]; then
+        echo "❌ 下载的文件为空"
+        rm -rf "${temp_dir}"
         return 1
     fi
     
     echo "📦 解压安装..."
-    if ! tar -xf "${temp_dir}/ss.tar.xz" -C "/usr/local/bin/"; then
-        echo "❌ 解压失败"
+    if ! tar -xf "${temp_dir}/ss.tar.xz" -C "/usr/local/bin/" 2>/dev/null; then
+        echo "❌ 解压失败，可能原因："
+        echo "  1. 下载的文件可能损坏"
+        echo "  2. 文件格式不正确"
+        echo "  3. 目标目录无写入权限"
+        rm -rf "${temp_dir}"
+        return 1
+    fi
+    
+    if [ ! -f "${SS_BIN}" ]; then
+        echo "❌ 未找到可执行文件：${SS_BIN}"
+        rm -rf "${temp_dir}"
         return 1
     fi
     
     chmod +x "${SS_BIN}"
     rm -rf "${temp_dir}"
+    return 0
 }
 
 # 安装服务
@@ -50,10 +80,21 @@ install() {
     echo "📦 开始安装 SS2022..."
     
     echo "ℹ️ 使用预编译二进制包安装..."
-    install_from_binary
+    if ! install_from_binary; then
+        echo "❌ 安装失败"
+        exit 1
+    fi
     
-    setup_service
-    setup_config
+    if ! setup_service; then
+        echo "❌ 服务配置失败"
+        exit 1
+    fi
+    
+    if ! setup_config; then
+        echo "❌ 配置文件创建失败"
+        exit 1
+    fi
+    
     create_symlinks
     echo "✅ 安装完成！"
 }
