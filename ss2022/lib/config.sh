@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 设置配置文件
 setup_config() {

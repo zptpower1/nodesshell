@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 添加用户
 add_user() {
@@ -70,7 +70,7 @@ query_user() {
     if [ ! -f "${USERS_PATH}" ]; then
         echo "❌ 用户文件不存在"
         return 1
-    }
+    fi
     
     local user_info=$(jq -r ".users[\"${username}\"].uuid" "${USERS_PATH}")
     if [ "${user_info}" != "null" ]; then

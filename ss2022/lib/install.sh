@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 从二进制包安装
 install_from_binary() {
