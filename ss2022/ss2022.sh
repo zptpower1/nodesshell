@@ -219,7 +219,7 @@ query_user() {
     if [ ! -f "${USERS_PATH}" ]; then
         echo "❌ 用户文件不存在"
         return 1
-    }
+    fi
     
     local user_info=$(jq -r ".users[\"${username}\"].uuid" "${USERS_PATH}")
     if [ "${user_info}" != "null" ]; then
