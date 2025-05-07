@@ -25,7 +25,7 @@ function base_check() {
     # 确保 LOG_PATH 文件存在并设置权限
     if [ ! -f "${LOG_PATH}" ]; then
         touch "${LOG_PATH}"
-        chmod 644 "${LOG_PATH}"
+        chmod 666 "${LOG_PATH}"
     fi
 
     # 确保用于配置文件已存在
