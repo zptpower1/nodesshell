@@ -18,20 +18,25 @@ get_latest_version() {
 get_download_url() {
     local version=$(get_latest_version)
     local status=$?
+    local download_url
     
     if [ $status -ne 0 ]; then
-        echo "⚠️ 获取版本号失败，使用默认版本：${version}"
+        echo >&2 "⚠️ 获取版本号失败，使用默认版本：${version}"
     else
-        echo "✅ 获取到最新版本：${version}"
+        echo >&2 "✅ 获取到最新版本：${version}"
     fi
     
-    echo "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
+    download_url="https://github.com/shadowsocks/shadowsocks-rust/releases/download/${version}/shadowsocks-${version}.x86_64-unknown-linux-gnu.tar.xz"
+    echo "${download_url}"
 }
 
 # 从二进制包安装
 install_from_binary() {
     local temp_dir="/tmp/ssrust"
-    local download_url=$(get_download_url)
+    local download_url
+    
+    # 获取下载地址并将状态信息重定向到stderr
+    download_url=$(get_download_url)
     
     echo "🔗 下载地址：${download_url}"
     
