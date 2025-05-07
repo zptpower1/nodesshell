@@ -13,7 +13,8 @@ init_users_config() {
 generate_user_config() {
     local name="$1"
     # 生成16字节(32个十六进制字符)的密钥
-    local password=$(openssl rand -base64 16 | head -c 24)
+    # local password=$(openssl rand -base64 16 | head -c 24)
+    local password=$(generate_key "${SERVER_METHOD}")
     echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
 }
 

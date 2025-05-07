@@ -71,3 +71,25 @@ function load_env() {
     echo "📌 从 .env 文件读取节点域名: $NODEDOMAIN"
   fi
 }
+
+# 生成密钥
+generate_key() {
+    local method="$1"
+    local key_length
+
+    case "$method" in
+        "2022-blake3-aes-128-gcm")
+            key_length=16
+            ;;
+        "2022-blake3-aes-256-gcm" | "2022-blake3-chacha20-poly1305")
+            key_length=32
+            ;;
+        *)
+            echo "✅ 加密方法: $method，默认使用 UUID 生成密码"
+            uuidgen | tr -d '-' | head -c 32
+            return 0
+            ;;
+    esac
+
+    openssl rand -base64 "$key_length" | head -c "$((key_length * 2))"
+}

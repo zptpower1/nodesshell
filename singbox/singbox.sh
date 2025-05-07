@@ -20,7 +20,10 @@ function base_check() {
     # 确保配置目录存在
     mkdir -p "${SING_BASE_PATH}"
     # 确保日志目录存在
-    mkdir -p "${LOG_DIR}"
+    if [ ! -d "${LOG_DIR}" ]; then
+        mkdir -p "${LOG_DIR}"
+        chmod 777 "${LOG_DIR}"
+    fi
     
     # 确保 LOG_PATH 文件存在并设置权限
     if [ ! -f "${LOG_PATH}" ]; then

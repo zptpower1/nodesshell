@@ -19,7 +19,8 @@ create_config() {
     fi
     
     # 生成32字节(64个十六进制字符)的主密钥
-    local server_key=$(openssl rand -base64 32 | head -c 44)
+    local server_key=$(generate_key "${SERVER_METHOD}")
+    #local server_key=$(openssl rand -base64 32 | head -c 44)
     #local server_key=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64)
     
     # 创建基础配置文件
