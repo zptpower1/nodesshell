@@ -35,8 +35,8 @@ create_config() {
       "type": "shadowsocks",
       "tag": "ss-in",
       "listen": "::",
-      "listen_port": ${DEFAULT_PORT},
-      "method": "${DEFAULT_METHOD}",
+      "listen_port": ${SERVER_PORT},
+      "method": "${SERVER_METHOD}",
       "password": "${server_key}"
     }
   ],
@@ -59,7 +59,7 @@ generate_client_configs() {
     
     USERS=$(jq -r '.inbounds[0].users[] | .name + ":" + .password' "${CONFIG_PATH}")
     while IFS=: read -r username password; do
-        SS_URL="ss://${DEFAULT_METHOD}:${password}@$(get_server_ip):${DEFAULT_PORT}#${username}"
+        SS_URL="ss://${SERVER_METHOD}:${password}@$(get_server_ip):${SERVER_PORT}#${username}"
         echo "用户: ${username}" >> "${config_dir}/client_configs.txt"
         echo "Shadowsocks URL: ${SS_URL}" >> "${config_dir}/client_configs.txt"
         echo "-------------------" >> "${config_dir}/client_configs.txt"

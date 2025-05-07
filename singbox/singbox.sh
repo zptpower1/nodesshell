@@ -39,8 +39,8 @@ function install_ss2022_multiuser() {
     
     # 设置默认值
     if [ -z "$port" ]; then
-        read -p "请输入端口号 [默认: ${DEFAULT_PORT}]: " port
-        port=${port:-${DEFAULT_PORT}}
+        read -p "请输入端口号 [默认: ${SERVER_PORT}]: " port
+        port=${port:-${SERVER_PORT}}
     fi
     
     if [ -z "$method" ]; then
@@ -53,7 +53,7 @@ function install_ss2022_multiuser() {
         case $method_choice in
             2) method="2022-blake3-aes-256-gcm";;
             3) method="2022-blake3-chacha20-poly1305";;
-            *) method="${DEFAULT_METHOD}";;
+            *) method="${SERVER_METHOD}";;
         esac
     fi
     
@@ -64,8 +64,8 @@ function install_ss2022_multiuser() {
     fi
     
     # 设置环境变量
-    export DEFAULT_PORT="$port"
-    export DEFAULT_METHOD="$method"
+    export SERVER_PORT="$port"
+    export SERVER_METHOD="$method"
     
     # 继续安装流程
     install_sing_box
@@ -78,6 +78,7 @@ function install_ss2022_multiuser() {
         echo "✅ 用户 admin 已存在，跳过添加步骤"
     fi
 
+    allow_firewall
     setup_service
     check_service
     

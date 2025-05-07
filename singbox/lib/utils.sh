@@ -14,8 +14,8 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 ENV_FILE="$SCRIPT_DIR/.env"
 
 # 默认配置
-DEFAULT_PORT=7388
-DEFAULT_METHOD="2022-blake3-aes-128-gcm"
+SERVER_PORT=7388
+SERVER_METHOD="2022-blake3-aes-128-gcm"
 
 # 检查root权限
 check_root() {

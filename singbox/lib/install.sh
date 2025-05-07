@@ -27,6 +27,21 @@ install_sing_box() {
     rm -rf /tmp/sing-box*
 }
 
+allow_firewall() {
+    # 配置防火墙规则
+    echo "🛡️ 配置防火墙规则..."
+    if command -v ufw >/dev/null 2>&1; then
+        ufw allow "${SERVER_PORT}"/tcp
+        ufw allow "${SERVER_PORT}"/udp
+    fi
+    if command -v iptables >/dev/null 2>&1; then
+        iptables -C INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
+        iptables -I INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT
+        iptables -C INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
+        iptables -I INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT
+    fi
+}
+
 # 升级 sing-box
 upgrade_sing_box() {
     echo "🔄 检查更新..."
