@@ -101,7 +101,7 @@ generate_client_config() {
     echo "🔧 服务器配置 (来自 ${CONFIG_PATH})："
     local port=$(jq -r '.inbounds[0].listen_port' "${CONFIG_PATH}")
     local method=$(jq -r '.inbounds[0].method' "${CONFIG_PATH}")
-    local realpwd=$(jq -r '.inbounds[0].users[] | select(.name == \"${name}\") | .password' "${CONFIG_PATH}")
+    local realpwd=$(jq -r '.inbounds[0].users[] | select(.name == '"${name}"') | .password' "${CONFIG_PATH}")
     if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
         echo "❌ 服务器配置读取失败"
         return 1
@@ -130,15 +130,21 @@ generate_client_config() {
     
     # 生成 URL
     echo "🔗 连接信息："
-    local ss_url="ss://${method}:${realpwd}@${server_ip}:${port}#${node_name:-$name}"
+    local config="${method}:${realpwd}@${server_ip}:${port}"
+    local ss_url="ss://${config}#${node_name:-$name}"
+
+    local config_base64=$(echo -n "${config}" | base64 -w 0)
+    local ss_url_base64="ss://${config_base64}#${node_name:-$name}"
+   
     echo "Shadowsocks URL: ${ss_url}"
+    echo "Shadowsocks URL (Base64): ${ss_url_base64}"
     echo "-------------------------------------------"
 
     # 根据环境变量配置决定是否显示二维码
     SHOW_QRCODE=$(source "$ENV_FILE" && echo "${SHOWQRCODE:-true}")
     if [[ "$SHOW_QRCODE" == "true" ]]; then
         echo "🔲 二维码:"
-        echo "$SS_URL" | qrencode -t UTF8
+        echo "$ss_url_base64" | qrencode -t UTF8
     fi
     echo "-------------------------------------------"
 }
