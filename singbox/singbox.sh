@@ -61,6 +61,9 @@ main() {
             base_check
             install_singbox
             ;;
+        setup)
+            setup_system
+            ;;
         # 升级命令
         upgrade)
             base_check
@@ -100,7 +103,7 @@ main() {
             disable_service
             ;;
         enable)
-            setup_system
+            enable_service
             ;;
         status)
             status_service
@@ -125,7 +128,9 @@ main() {
         checkc)
             check_config
             ;;
-            
+        protocol)
+            setup_protocol
+            ;;
         logs)
             view_logs
             ;;
@@ -140,6 +145,7 @@ main() {
             echo "            - 2022-blake3-aes-128-gcm (默认)"
             echo "            - 2022-blake3-aes-256-gcm"
             echo "            - 2022-blake3-chacha20-poly1305"
+            echo "  setup       配置系统服务"
             echo "  upgrade     升级服务"
             echo "  uninstall   卸载服务"
             echo
@@ -163,7 +169,8 @@ main() {
             echo "  backup      备份配置"
             echo "  restore     还原配置"
             echo "  config      查看当前配置"
-            echo "  checkc 检查配置文件"
+            echo "  checkc      检查配置文件"
+            echo "  protocol    配置协议"
             echo
             echo "日志管理命令:"
             echo "  logs        查看日志文件"
