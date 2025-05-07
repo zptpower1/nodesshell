@@ -14,8 +14,8 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 ENV_FILE="$SCRIPT_DIR/.env"
 
 # 默认配置
-SERVER_PORT=7388
-SERVER_METHOD="2022-blake3-aes-128-gcm"
+# SERVER_PORT=7388
+# SERVER_METHOD="2022-blake3-aes-128-gcm"
 
 # 检查root权限
 check_root() {
@@ -93,4 +93,39 @@ generate_key() {
 
     # openssl rand -base64 "$key_length" | head -c "$((key_length * 2))"
     $SING_BIN generate rand $key_length --base64
+}
+
+# 生成随机端口并检查占用
+generate_random_port() {
+    local port
+    while true; do
+        port=$((RANDOM % 1000 + 50000))  # 生成50000到51000之间的随机端口
+        if ! lsof -i:"$port" &>/dev/null; then
+            if ! jq -e ".inbounds[] | select(.listen_port == $port)" "$CONFIG_PATH" &>/dev/null; then
+                echo "✅ 可用端口: $port"
+                break
+            else
+                echo "⚠️ 配置文件中已存在端口: $port"
+            fi
+        else
+            echo "⚠️ 端口已被占用: $port"
+        fi
+    done
+    echo "$port"
+}
+
+# 配置防火墙规则
+allow_firewall() {
+    echo "🛡️ 配置防火墙规则..."
+    if command -v ufw >/dev/null 2>&1; then
+        echo "使用 ufw 配置防火墙规则..."
+        ufw allow "${SERVER_PORT}"/tcp
+        ufw allow "${SERVER_PORT}"/udp
+    else
+        echo "ufw 不可用，使用 iptables 配置防火墙规则..."
+        iptables -C INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
+        iptables -I INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT
+        iptables -C INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
+        iptables -I INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT
+    fi
 }

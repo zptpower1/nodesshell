@@ -5,23 +5,20 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 创建基础配置
 create_config() {
-    local force="$1"
-    
     # 检查目录是否存在，不存在则创建
     if [ ! -d "${SING_BASE_PATH}" ]; then
         mkdir -p "${SING_BASE_PATH}"
     fi
     
     # 检查基础配置文件是否已存在
-    if [ -f "${BASE_CONFIG_PATH}" ] && [ "$force" != "force" ]; then
-        echo "✅ 基础配置文件已存在，跳过创建"
-        return 0
+    if [ -f "${BASE_CONFIG_PATH}" ]; then
+        echo "✅ 基础配置文件已存在。"
+        read -p "是否要覆盖现有配置文件？(n[默认]/y): " choice
+        if [ "$choice" != "y" ]; then
+            echo "跳过创建"
+            return 0
+        fi
     fi
-    
-    # 生成32字节(64个十六进制字符)的主密钥
-    local server_key=$(generate_key "${SERVER_METHOD}")
-    #local server_key=$(openssl rand -base64 32 | head -c 44)
-    #local server_key=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | xxd -p -c 64)
     
     # 创建基础配置文件
     cat > "${BASE_CONFIG_PATH}" << EOF
@@ -33,25 +30,6 @@ create_config() {
     "disabled": false
   },
   "inbounds": [
-    {
-      "type": "shadowsocks",
-      "tag": "ss-brutal-sb-in",
-      "listen": "::",
-      "listen_port": ${SERVER_PORT},
-      "sniff": true,
-      "sniff_override_destination": true,
-      "method": "${SERVER_METHOD}",
-      "password": "${server_key}",
-      "multiplex": {
-        "enabled": true,    
-        "padding": true,
-        "brutal": {
-          "enabled": true,
-          "up_mbps": 600,
-          "down_mbps": 600
-        }
-      }
-    }
   ],
   "outbounds": [
     {
@@ -91,8 +69,15 @@ sync_config() {
     # 创建临时文件
     local temp_file=$(mktemp)
     
+    # 定义支持多用户的协议和方法白名单，使用正则表达式
+    local whitelist=(
+        ["shadowsocks"]="^2022-blake3-aes-.*-gcm$"
+        # 可以在这里添加其他协议和对应的方法
+    )
+    
     # 合并基础配置和用户配置
-    jq -s '.[0] * {"inbounds":[.[0].inbounds[0] * {"users":.[1].users}]}' \
+    jq -s --argjson whitelist "$(printf '%s\n' "${!whitelist[@]}" | jq -R . | jq -s .)" \
+        '.[0] * {"inbounds":[.[0].inbounds[] | select(.type as $type | $whitelist | index($type)) | select(.method as $method | test($whitelist[$type])) | .users = .[1].users]}' \
         "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}"
     
     # 检查合并后的配置文件是否有效

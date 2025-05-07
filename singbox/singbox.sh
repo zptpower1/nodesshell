@@ -9,6 +9,8 @@ source "${SCRIPT_DIR}/lib/install.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/service.sh"
 source "${SCRIPT_DIR}/lib/user.sh"
+source "${SCRIPT_DIR}/lib/setup.sh"
+source "${SCRIPT_DIR}/lib/info.sh"
 
 # 检查环境文件
 load_env
@@ -108,6 +110,11 @@ function install_ss2022_multiuser() {
     echo "-------------------------------------------"
 }
 
+function install_singbox_only() {
+    install_sing_box
+    create_config "$1"
+}
+
 # 查看日志文件
 function view_logs() {
     if [ -f "${LOG_PATH}" ]; then
@@ -124,12 +131,12 @@ main() {
         # 安装命令
         install)
             base_check
-            if [ "$2" = "-f" ]; then
-                shift  # 移除 -f 参数
-                install_ss2022_multiuser "force" "$2" "$3"
-            else
-                install_ss2022_multiuser "" "$2" "$3"
-            fi
+            install_singbox_only "$2"
+            ;;
+            
+        # 设置协议服务命令
+        setup)
+            setup_service
             ;;
             
         # 升级命令
@@ -191,7 +198,7 @@ main() {
         config)
             show_config
             ;;
-        check_config)
+        checkc)
             check_config
             ;;
             
@@ -231,7 +238,7 @@ main() {
             echo "  backup      备份配置"
             echo "  restore     还原配置"
             echo "  config      查看当前配置"
-            echo "  check_config 检查配置文件"
+            echo "  checkc 检查配置文件"
             echo
             echo "日志管理命令:"
             echo "  logs        查看日志文件"
