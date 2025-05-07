@@ -21,6 +21,13 @@ function base_check() {
     mkdir -p "${SING_BASE_PATH}"
     # 确保日志目录存在
     mkdir -p "${LOG_DIR}"
+    
+    # 确保 LOG_PATH 文件存在并设置权限
+    if [ ! -f "${LOG_PATH}" ]; then
+        touch "${LOG_PATH}"
+        chmod 644 "${LOG_PATH}"
+    fi
+
     # 确保用于配置文件已存在
     init_users_config
 }

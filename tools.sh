@@ -126,7 +126,7 @@ monitor_logs() {
 list_systemctls() {
     echo "📜 列出所有 systemd 服务："
     if [ -d "/etc/systemd/system" ]; then
-        ls /etc/systemd/system/*.service
+        ls -al /etc/systemd/system/*.service
     else
         echo "⚠️ /etc/systemd/system 目录不存在"
     fi
