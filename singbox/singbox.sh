@@ -79,7 +79,6 @@ function install_ss2022_multiuser() {
     fi
 
     allow_firewall
-    check_config
     setup_service
     check_service
     

@@ -20,9 +20,8 @@ User=nobody
 WantedBy=multi-user.target
 EOF
 
-    systemctl daemon-reload
-    systemctl enable ${SERVICE_NAME}
-    systemctl start ${SERVICE_NAME}
+    enable_service
+    reload_service
 }
 
 # 检查服务状态
@@ -99,10 +98,37 @@ status_service() {
     fi
 }
 
+reload_service() {
+    echo "🔄 重载服务..."
+    if [ -f "${SERVICE_FILE}" ]; then
+        systemctl daemon-reload
+        systemctl restart ${SERVICE_NAME}
+        echo "✅ 服务已重载"
+    else
+        echo "⚠️ 服务配置不存在"
+    fi
+}
+
+enable_service() {
+    echo "🔓 启用服务..."
+    if [ -f "${SERVICE_FILE}" ]; then
+        systemctl enable ${SERVICE_NAME}
+        echo "✅ 服务已启用"
+    else
+        echo "⚠️ 服务配置不存在"
+    fi
+}
+
 # 启动服务
 start_service() {
     echo "🚀 启动服务..."
-    systemctl start ${SERVICE_NAME}
+    check_config
+    if [ -f "${SERVICE_FILE}" ]; then
+        systemctl start ${SERVICE_NAME}
+        echo "✅ 服务已启动"
+    else
+        echo "⚠️ 服务配置不存在"
+    fi
     # if systemctl list-units --type=service | grep -q "${SERVICE_NAME}"; then
     #     systemctl start ${SERVICE_NAME}
     #     echo "✅ 服务已通过 systemctl 启动"
