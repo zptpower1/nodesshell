@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function setup_service() {
+function setup_protocol() {
     local protocol
     
     # 如果没有提供协议参数，则让用户选择
@@ -21,7 +21,7 @@ function setup_service() {
     case "$protocol" in
         ss)
             source "$(dirname "${BASH_SOURCE[0]}")/ss2022/setup.sh"
-            setup_protocol
+            setup_protocoler
             ;;
         vless_vision_reality)
             # source "$(dirname "${BASH_SOURCE[0]}")/vless/setup.sh"
@@ -33,6 +33,5 @@ function setup_service() {
             ;;
     esac
 
-    setup_service
     check_service
 }

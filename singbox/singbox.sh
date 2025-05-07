@@ -37,9 +37,10 @@ function base_check() {
     init_users_config
 }
 
-function install_singbox_only() {
+function install_singbox() {
     install_sing_box
     create_base_config
+    setup_systemctl
 }
 
 # 查看日志文件
@@ -58,20 +59,13 @@ main() {
         # 安装命令
         install)
             base_check
-            install_singbox_only "$2"
+            install_singbox
             ;;
-            
-        # 设置协议服务命令
-        setup)
-            setup_service
-            ;;
-            
         # 升级命令
         upgrade)
             base_check
             upgrade_sing_box
             ;;
-            
         # 卸载命令
         uninstall)
             uninstall_sing_box
@@ -104,6 +98,9 @@ main() {
             ;;
         disable)
             disable_service
+            ;;
+        enable)
+            setup_system
             ;;
         status)
             status_service
@@ -157,6 +154,7 @@ main() {
             echo "  restart     重启服务"
             echo "  stop        停止服务"
             echo "  disable     禁用服务"
+            echo "  enable      启用服务"
             echo "  status      查看服务状态"
             echo "  check       检查服务运行状态"
             echo
