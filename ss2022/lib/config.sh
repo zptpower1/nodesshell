@@ -28,13 +28,11 @@ setup_config() {
     # 让用户选择 IP 协议支持
     echo "请选择 IP 协议支持："
     echo "1) 仅 IPv4"
-    echo "2) 仅 IPv6"
-    echo "3) 同时支持 IPv4 和 IPv6 [默认]"
-    read -p "请输入选项 [1-3]: " IP_VERSION
+    echo "2) 同时支持 IPv4 和 IPv6 [默认]"
+    read -p "请输入选项 [1-2]: " IP_VERSION
     case "$IP_VERSION" in
-        1) SERVER_IP="[\"0.0.0.0\"]" ;;
-        2) SERVER_IP="[\"::\"]" ;;
-        *) SERVER_IP="[\"0.0.0.0\", \"::\"]" ;;
+        1) SERVER_IP="\"0.0.0.0\"" ;;
+        *) SERVER_IP="\"::\"" ;;
     esac
     echo "📌 IP 协议支持已设置"
     

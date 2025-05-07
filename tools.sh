@@ -70,6 +70,20 @@ show_info() {
     uptime | awk -F'load averages:' '{print $2}'
 }
 
+# 检查网络端口监听状态
+check_listen() {
+    local port="$1"
+    echo "📡 网络端口监听状态："
+    if [ -z "${port}" ]; then
+        netstat -lnpt 2>/dev/null || netstat -lnp 2>/dev/null || netstat -ln
+    else
+        echo "查看端口 ${port} 的监听状态："
+        netstat -lnpt 2>/dev/null | grep ":${port}" || \
+        netstat -lnp 2>/dev/null | grep ":${port}" || \
+        netstat -ln | grep ":${port}"
+    fi
+}
+
 main() {
     case "$1" in
         # 工具命令
@@ -88,16 +102,20 @@ main() {
         info)
             show_info
             ;;
+        listen)
+            check_listen "$2"
+            ;;
         
         *)
             echo "用法: $0 <command> [args]"
             echo
             echo "工具命令:"
-            echo "  port [端口]  查看端口占用情况"
-            echo "  system      查看系统资源使用情况"
-            echo "  network     查看网络连接状态"
-            echo "  service     查看服务运行状态"
-            echo "  info        查看系统信息"
+            echo "  port [端口]   查看端口占用情况"
+            echo "  listen [端口] 查看网络端口监听状态"
+            echo "  system       查看系统资源使用情况"
+            echo "  network      查看网络连接状态"
+            echo "  service      查看服务运行状态"
+            echo "  info         查看系统信息"
             ;;
     esac
 }
