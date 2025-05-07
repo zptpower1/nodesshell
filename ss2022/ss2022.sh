@@ -4,6 +4,7 @@
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 SS_BASE_PATH="/usr/local/etc/shadowsocks2022"
 CONFIG_PATH="${SS_BASE_PATH}/config.json"
+BASE_CONFIG_PATH="${SS_BASE_PATH}/base_config.json"
 USERS_PATH="${SS_BASE_PATH}/users.json"
 BACKUP_DIR="${SS_BASE_PATH}/backup"
 LOG_DIR="/var/log/shadowsocks2022"
@@ -32,6 +33,7 @@ main() {
         # 系统管理命令
         install)
             install
+            restart_service
             ;;
         uninstall)
             uninstall
@@ -60,9 +62,11 @@ main() {
         # 用户管理命令
         add)
             add_user "$2"
+            restart_service
             ;;
         del)
             del_user "$2"
+            restart_service
             ;;
         list)
             list_users
@@ -104,6 +108,7 @@ main() {
             echo "  query       查询用户信息"
             echo
             echo "配置管理命令:"
+            echo "  sync        同步配置文件"
             echo "  backup      备份配置"
             echo "  restore     还原配置"
             echo "  config      查看当前配置"

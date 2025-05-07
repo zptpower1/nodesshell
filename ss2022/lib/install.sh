@@ -56,14 +56,18 @@ install() {
     check_root
     echo "📦 开始安装 SS2022..."
     
+    if [[ -f "$CONFIG_PATH" ]]; then
+        echo "⚠️ 检测到已有配置文件：$CONFIG_PATH"
+        read -p "是否覆盖已有配置并继续安装？(y/N): " CONFIRM
+        case "$CONFIRM" in
+            [yY]) backup_config ;;
+            *) echo "❌ 已取消安装操作。"; exit 1 ;;
+        esac
+    fi
+    
     echo "ℹ️ 使用预编译二进制包安装..."
     if ! install_from_binary; then
         echo "❌ 安装失败"
-        exit 1
-    fi
-    
-    if ! setup_service; then
-        echo "❌ 服务配置失败"
         exit 1
     fi
     
@@ -72,8 +76,33 @@ install() {
         exit 1
     fi
     
+    if ! setup_service; then
+        echo "❌ 服务配置失败"
+        exit 1
+    fi
+    
+    # 配置防火墙规则
+    echo "🛡️ 配置防火墙规则..."
+    if command -v ufw >/dev/null 2>&1; then
+        ufw allow "${SERVER_PORT}"/tcp
+        ufw allow "${SERVER_PORT}"/udp
+    fi
+    if command -v iptables >/dev/null 2>&1; then
+        iptables -C INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
+        iptables -I INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT
+        iptables -C INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
+        iptables -I INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT
+    fi
+    
     create_symlinks
+    
+    # 同步配置文件
+    if ! sync_config; then
+        echo "⚠️ 配置同步失败，但不影响安装"
+    fi
+    
     echo "✅ 安装完成！"
+    show_config
 }
 
 # 卸载服务
@@ -117,3 +146,4 @@ upgrade_shadowsocks() {
     restart_service
     echo "✅ 升级完成"
 }
+
