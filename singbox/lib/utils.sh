@@ -98,19 +98,12 @@ generate_key() {
 # 生成随机端口并检查占用
 generate_random_port() {
     local port
-    local portOk
     while true; do
         port=$((RANDOM % 1000 + 50000))  # 生成50000到51000之间的随机端口
-        portOk=$port
         if ! lsof -i:"$port" &>/dev/null; then
             if ! jq -e ".inbounds[] | select(.listen_port == $port)" "$CONFIG_PATH" &>/dev/null; then
-                echo "✅ 端口可用: $portOk"
                 break
-            else
-                echo "⚠️ 配置文件中已存在端口: $portOk"
             fi
-        else
-            echo "⚠️ 端口已被占用: $portOk"
         fi
     done
     echo "$port"  # 通过 echo 返回端口号
