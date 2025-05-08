@@ -309,13 +309,13 @@ user_migrate() {
     mv "${temp_file}" "${USERS_PATH}"
     chmod 644 "${USERS_PATH}"
     
-    # 统计更新数量
+    # 统计更新数量（修改这部分）
     local total_users=$(jq '.users | length' "${USERS_PATH}")
-    local updated_users=$(jq ".users | map(select(.${field} == ${jq_value})) | length" "${USERS_PATH}")
+    local null_field_users=$(jq ".users | map(select(.${field} == null)) | length" "${USERS_PATH}")
     
     echo "✅ 用户数据迁移完成"
     echo "📊 统计信息:"
     echo "  - 总用户数: ${total_users}"
-    echo "  - 更新用户数: ${updated_users}"
-    echo "  - 已有该字段用户数: $((total_users - updated_users))"
+    echo "  - 更新用户数: ${null_field_users}"
+    echo "  - 已有该字段用户数: $((total_users - null_field_users))"
 }
