@@ -26,12 +26,6 @@ function base_check() {
     init_users_config
 }
 
-function install_singbox() {
-    install_sing_box
-    config_create_base
-    config_sync
-}
-
 # 查看日志文件
 function view_logs() {
     if [ -f "${LOG_PATH}" ]; then
@@ -52,7 +46,7 @@ main() {
         # 系统管理命令
         install)
             base_check
-            install_singbox
+            install_sing_box
             ;;
         upgrade)
             base_check

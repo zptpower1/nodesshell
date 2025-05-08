@@ -26,6 +26,7 @@ install_sing_box() {
     mv /tmp/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/
     rm -rf /tmp/sing-box*
 
+    config_create_base
     service_install
     echo "✅ Sing-box 已安装"
 }

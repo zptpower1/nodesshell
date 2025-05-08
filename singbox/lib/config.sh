@@ -36,6 +36,8 @@ config_create_base() {
 EOF
 
     echo "✅ 基础配置文件创建成功"
+    config_protocol_setup
+    config_sync
 }
 
 # 生成客户端配置
