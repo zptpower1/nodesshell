@@ -42,7 +42,6 @@ add_protocol() {
   "listen_port": ${port},
   "sniff": true,
   "sniff_override_destination": true,
-  "method": "${method}",
   "tls": {
         "enabled": true,
         "server_name": "icloud.cdn-apple.com",

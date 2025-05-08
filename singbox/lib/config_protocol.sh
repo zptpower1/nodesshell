@@ -44,3 +44,67 @@ function config_protocol_setup() {
     # 检查服务状态
     service_check
 }
+
+# 卸载协议
+function config_protocol_remove() {
+    # 检查配置文件是否存在
+    if [ ! -f "${BASE_CONFIG_PATH}" ]; then
+        echo "❌ 基础配置文件不存在：${BASE_CONFIG_PATH}"
+        return 1
+    fi
+    
+    # 获取所有已安装的 inbound 信息
+    local inbounds_info=$(jq -r '.inbounds[] | "\(.tag)|\(.type)|\(.listen_port)"' "${BASE_CONFIG_PATH}")
+    if [ -z "$inbounds_info" ]; then
+        echo "❌ 当前没有已安装的协议服务"
+        return 1
+    }
+    
+    # 显示所有已安装的协议
+    echo "已安装的协议服务列表:"
+    echo "----------------------------------------"
+    echo "序号  标签名(Tag)           类型(Type)           端口(Port)"
+    echo "----------------------------------------"
+    
+    local index=1
+    local tag_list=()
+    while IFS='|' read -r tag type port; do
+        printf "%-6s%-20s%-20s%-6s\n" "$index)" "$tag" "$type" "$port"
+        tag_list+=("$tag")
+        ((index++))
+    done <<< "$inbounds_info"
+    
+    echo "----------------------------------------"
+    read -p "请选择要卸载的协议 [1-$((index-1))]: " choice
+    
+    # 验证输入
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -ge "$index" ]; then
+        echo "❌ 无效的选择"
+        return 1
+    fi
+    
+    # 获取选择的标签
+    local selected_tag="${tag_list[$((choice-1))]}"
+    
+    # 获取要删除的端口号（用于后续移除防火墙规则）
+    local port_to_remove=$(jq -r ".inbounds[] | select(.tag == \"$selected_tag\") | .listen_port" "${BASE_CONFIG_PATH}")
+    
+    # 从配置中移除选中的 inbound
+    echo "🗑️ 正在移除协议服务: $selected_tag"
+    jq "del(.inbounds[] | select(.tag == \"$selected_tag\"))" "${BASE_CONFIG_PATH}" > "${BASE_CONFIG_PATH}.tmp" && \
+    mv "${BASE_CONFIG_PATH}.tmp" "${BASE_CONFIG_PATH}"
+    
+    # 移除对应的防火墙规则
+    if [ -n "$port_to_remove" ]; then
+        delete_firewall_port "$port_to_remove"
+    fi
+    
+    # 同步配置
+    config_sync
+    # 重启服务
+    service_restart
+    # 检查服务状态
+    service_check
+    
+    echo "✅ 协议服务已成功移除"
+}
