@@ -60,33 +60,57 @@ generate_client_configs() {
 }
 
 # 同步配置
-# 同步配置
 config_sync() {
+    echo "DEBUG: Starting config_sync"
+    echo "DEBUG: BASE_CONFIG_PATH=${BASE_CONFIG_PATH}"
+    echo "DEBUG: USERS_PATH=${USERS_PATH}"
+    echo "DEBUG: CONFIG_PATH=${CONFIG_PATH}"
+
+    # 检查文件存在性
     if [ ! -f "${BASE_CONFIG_PATH}" ] || [ ! -f "${USERS_PATH}" ]; then
         echo "❌ 基础配置文件或用户配置文件不存在"
         return 1
     fi
-    
-    # 验证输入文件格式
-    if ! jq '.' "${BASE_CONFIG_PATH}" >/dev/null 2>&1 || ! jq '.' "${USERS_PATH}" >/dev/null 2>&1; then
-        echo "❌ 输入文件 JSON 格式无效"
+    echo "DEBUG: Input files exist"
+
+    # 验证 JSON 格式
+    if ! jq '.' "${BASE_CONFIG_PATH}" >/dev/null 2>&1; then
+        echo "❌ base_config.json JSON 格式无效"
         return 1
     fi
-    
+    if ! jq '.' "${USERS_PATH}" >/dev/null 2>&1; then
+        echo "❌ users.json JSON 格式无效"
+        return 1
+    fi
+    echo "DEBUG: Input files are valid JSON"
+
+    # 检查目标目录权限
+    local config_dir=$(dirname "${CONFIG_PATH}")
+    if [ ! -w "${config_dir}" ]; then
+        echo "❌ 目标目录 ${config_dir} 不可写"
+        return 1
+    fi
+    echo "DEBUG: Config directory is writable"
+
     # 创建临时文件
-    local temp_file=$(mktemp)
-    
-    # 定义支持多用户的协议和方法白名单，作为 JSON 对象
+    local temp_file
+    temp_file=$(mktemp /tmp/sing-box-config.XXXXXX) || {
+        echo "❌ 无法创建临时文件"
+        return 1
+    }
+    echo "DEBUG: Temporary file created: ${temp_file}"
+
+    # 定义白名单
     local whitelist='{
         "shadowsocks": "^2022-blake3-aes-.*-gcm$"
     }'
-    
-    # 合并基础配置和用户配置
-    jq -s --argjson whitelist "${whitelist}" '
-        # 规范化输入，确保是对象
+    echo "DEBUG: Whitelist defined"
+
+    # 运行 jq 合并
+    echo "DEBUG: Running jq command"
+    if ! jq -s --argjson whitelist "${whitelist}" '
         (if .[0] | type == "array" then .[0][0] else .[0] end) as $base |
         (if .[1] | type == "array" then .[1][0] else .[1] end) as $users |
-        # 验证 $users.users 存在且是数组
         if ($users.users | type) != "array" then
             error("users.json must contain a valid users array")
         else
@@ -102,27 +126,53 @@ config_sync() {
                 )
             }
         end
-    ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}" 2> "${temp_file}.err"
-    
-    # 检查合并结果
+    ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}" 2> "${temp_file}.err"; then
+        echo "❌ jq 命令执行失败: $(cat ${temp_file}.err)"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: jq command completed"
+
+    # 检查 jq 错误
     if [ -s "${temp_file}.err" ]; then
         echo "❌ jq 错误: $(cat ${temp_file}.err)"
         rm -f "${temp_file}" "${temp_file}.err"
         return 1
     fi
-    
-    # 检查合并后的配置文件是否有效
+    echo "DEBUG: No jq errors"
+
+    # 检查输出文件
+    if [ ! -s "${temp_file}" ]; then
+        echo "❌ 临时文件为空"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: Temporary file has content"
+
+    # 验证输出 JSON
     if ! jq '.' "${temp_file}" >/dev/null 2>&1; then
         echo "❌ 配置文件格式无效"
         rm -f "${temp_file}" "${temp_file}.err"
         return 1
     fi
-    
-    # 更新配置文件
-    mv "${temp_file}" "${CONFIG_PATH}"
-    chmod 644 "${CONFIG_PATH}"
+    echo "DEBUG: Output JSON is valid"
+
+    # 移动文件
+    if ! mv "${temp_file}" "${CONFIG_PATH}"; then
+        echo "❌ 无法移动临时文件到 ${CONFIG_PATH}"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: File moved to ${CONFIG_PATH}"
+
+    # 设置权限
+    chmod 644 "${CONFIG_PATH}" || {
+        echo "❌ 无法设置 ${CONFIG_PATH} 权限"
+        return 1
+    }
     rm -f "${temp_file}.err"
-    
+    echo "DEBUG: Permissions set"
+
     echo "✅ 配置同步完成"
 }
 
