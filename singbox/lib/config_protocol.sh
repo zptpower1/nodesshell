@@ -58,7 +58,7 @@ function config_protocol_remove() {
     if [ -z "$inbounds_info" ]; then
         echo "❌ 当前没有已安装的协议服务"
         return 1
-    }
+    fi
     
     # 显示所有已安装的协议
     echo "已安装的协议服务列表:"
