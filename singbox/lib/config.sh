@@ -125,33 +125,26 @@ config_sync() {
                         ($base.inbounds[] | 
                         if .type == "shadowsocks" then
                             . + {
-                                "users": ($users.users | map(
-                                    {
-                                        "name": .name,
-                                        "password": 
-                                            if $method_map[.method] == "password_16" then
-                                                .password_16
-                                            elif $method_map[.method] == "password_32" then
-                                                .password_32
-                                            else
-                                                .uuid
-                                            end
-                                    }
-                                ))
+                                "users": ($users.users | map({
+                                    "name": .name,
+                                    "password": (
+                                        if .method == "2022-blake3-aes-128-gcm" then .password_16
+                                        elif .method == "2022-blake3-aes-256-gcm" then .password_32
+                                        elif .method == "2022-blake3-chacha20-poly1305" then .password_32
+                                        else .uuid
+                                        end
+                                    )
+                                }))
                             }
                         elif .type == "vless" or .type == "vmess" then
                             . + {
-                                "users": ($users.users | map(
-                                    {
-                                        "name": .name,
-                                        "uuid": .uuid
-                                    }
-                                ))
+                                "users": ($users.users | map({
+                                    "name": .name,
+                                    "uuid": .uuid
+                                }))
                             }
-                        else
-                            .
-                        end)
-                    ]
+                        else . end
+                    )]
                 }
             end
         end
