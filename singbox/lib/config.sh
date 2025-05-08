@@ -66,6 +66,12 @@ config_sync() {
         return 1
     fi
     
+    # 验证输入文件格式
+    if ! jq '.' "${BASE_CONFIG_PATH}" >/dev/null 2>&1 || ! jq '.' "${USERS_PATH}" >/dev/null 2>&1; then
+        echo "❌ 输入文件 JSON 格式无效"
+        return 1
+    fi
+    
     # 创建临时文件
     local temp_file=$(mktemp)
     
@@ -75,12 +81,15 @@ config_sync() {
     }'
     
     # 合并基础配置和用户配置
-    jq --argjson whitelist "${whitelist}" '
-        .[0] * {
+    jq -s --argjson whitelist "${whitelist}" '
+        # 确保输入是对象，如果是数组取第一个元素
+        (if .[0] | type == "array" then .[0][0] else .[0] end) as $base |
+        (if .[1] | type == "array" then .[1][0] else .[1] end) as $users |
+        $base * {
             "inbounds": (
-                .[0].inbounds | map(
+                $base.inbounds | map(
                     if .type == "shadowsocks" and (.method | test($whitelist[.type])) then
-                        . + { "users": .[1].users }
+                        . + { "users": $users.users }
                     else
                         .
                     end
