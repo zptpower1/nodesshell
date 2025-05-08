@@ -163,7 +163,7 @@ delete_firewall_port() {
     if [ -z "$port" ]; then
         echo "❌ 请提供端口号"
         return 1
-    }
+    fi
     
     if command -v ufw >/dev/null 2>&1; then
         echo "   使用 ufw 移除防火墙规则 (端口: ${port})..."
