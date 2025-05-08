@@ -78,6 +78,7 @@ generate_key() {
     case "$method" in
         "2022-blake3-aes-128-gcm")
             $SING_BIN generate rand 16 --base64
+            ;;
         "2022-blake3-aes-256-gcm" | "2022-blake3-chacha20-poly1305")
             $SING_BIN generate rand 32 --base64
             ;;
