@@ -9,17 +9,6 @@ generate_client_config() {
     echo "📱 用户 ${name} 的配置信息："
     echo "-------------------------------------------"
     
-    # 从 USERS_PATH 获取用户信息
-    echo "👤 用户配置 (来自 ${USERS_PATH})："
-    local password=$(jq -r ".users[] | select(.name == \"${name}\") | .password" "${USERS_PATH}")
-    if [ -z "${password}" ] || [ "${password}" = "null" ]; then
-        echo "❌ 未在用户配置中找到用户 ${name}"
-        return 1
-    fi
-    echo "用户名: ${name}"
-    echo "密码: ${password}"
-    echo
-    
     # 从 CONFIG_PATH 获取服务器配置
     echo "🔧 服务器配置 (来自 ${CONFIG_PATH})："
     local inbounds=$(jq -c '.inbounds[]' "${CONFIG_PATH}")
@@ -31,12 +20,20 @@ generate_client_config() {
         server_ip="$node_domain"
     fi
     
+    local found_user=false
+    
     for inbound in $inbounds; do
         local protocol=$(echo "$inbound" | jq -r '.type')
         local port=$(echo "$inbound" | jq -r '.listen_port')
         local method=$(echo "$inbound" | jq -r '.method')
         local server_key=$(echo "$inbound" | jq -r '.password')
         local realpwd=$(echo "$inbound" | jq -r ".users[] | select(.name == \"${name}\") | .password")
+        
+        if [ -z "${realpwd}" ] || [ "${realpwd}" = "null" ]; then
+            continue
+        fi
+        
+        found_user=true
         
         if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
             echo "❌ 服务器配置读取失败"
@@ -47,8 +44,8 @@ generate_client_config() {
         echo "服务器: ${server_ip}"
         echo "端口: ${port}"
         echo "加密方法: ${method}"
+        echo "服务密钥: ${server_key}"
         echo "用户密码: ${realpwd}"
-        echo "服务密码: ${server_key}"
         echo
         
         # 根据协议生成不同的 URL
@@ -64,6 +61,11 @@ generate_client_config() {
         esac
         echo "-------------------------------------------"
     done
+
+    if [ "$found_user" = false ]; then
+        echo "❌ 未找到用户 ${name}"
+        return 1
+    fi
 
     # # 根据环境变量配置决定是否显示二维码
     # SHOW_QRCODE=$(source "$ENV_FILE" && echo "${SHOWQRCODE:-false}")
