@@ -12,10 +12,14 @@ init_users_config() {
 # 生成用户配置
 generate_user_config() {
     local name="$1"
-    # 生成16字节(32个十六进制字符)的密钥
-    # local password=$(openssl rand -base64 16 | head -c 24)
-    local password=$(generate_key "${SERVER_METHOD}")
-    echo "{\"name\":\"${name}\",\"password\":\"${password}\"}"
+    # 生成UUID
+    local uuid=$(uuidgen | tr -d '-')
+    # 生成16字节密钥
+    local key_16=$($SING_BIN generate rand 16 --base64)
+    # 生成32字节密钥
+    local key_32=$($SING_BIN generate rand 32 --base64)
+    
+    echo "{\"name\":\"${name}\",\"uuid\":\"${uuid}\",\"password_16\":\"${key_16}\",\"password_32\":\"${key_32}\"}"
 }
 
 # 检查用户是否已存在
