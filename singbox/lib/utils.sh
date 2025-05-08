@@ -127,13 +127,23 @@ allow_firewall() {
 
 # 初始化目录结构
 init_directories() {
+    echo "📂 初始化目录结构..."
+    
     # 创建配置目录
+    echo "   创建配置目录: ${CONFIGS_DIR}"
     mkdir -p "${CONFIGS_DIR}"
+    
+    echo "   创建备份目录: ${BACKUP_DIR}"
     mkdir -p "${BACKUP_DIR}"
+    
     # 创建日志目录
+    echo "   创建日志目录: ${LOGS_DIR}"
     mkdir -p "${LOGS_DIR}"
     
     # 设置适当的权限
+    echo "🔒 设置目录权限..."
     chmod 755 "${CONFIGS_DIR}" "${LOGS_DIR}"
     chmod 700 "${BACKUP_DIR}"  # 备份目录设置更严格的权限
+    
+    echo "✅ 目录结构初始化完成"
 }
