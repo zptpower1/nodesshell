@@ -32,14 +32,8 @@ function setup_protocoler() {
         return 1
     fi
     
-    # 设置环境变量
-    export SERVER_PORT="$port"
-    export SERVER_METHOD="$method"
-    
-    # 继续安装协议服务
-    allow_firewall
     # 初始化配置
-    add_protocol
+    add_protocol "$port" "$method"
     
     # 显示安装信息
     echo

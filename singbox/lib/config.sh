@@ -41,20 +41,20 @@ EOF
 }
 
 # 生成客户端配置
-generate_client_configs() {
-    local config_dir="/tmp/ss2022_configs"
-    mkdir -p $config_dir
+# generate_client_configs() {
+#     local config_dir="/tmp/ss2022_configs"
+#     mkdir -p $config_dir
     
-    USERS=$(jq -r '.inbounds[0].users[] | .name + ":" + .password' "${CONFIG_PATH}")
-    while IFS=: read -r username password; do
-        SS_URL="ss://${SERVER_METHOD}:${password}@$(get_server_ip):${SERVER_PORT}#${username}"
-        echo "用户: ${username}" >> "${config_dir}/client_configs.txt"
-        echo "Shadowsocks URL: ${SS_URL}" >> "${config_dir}/client_configs.txt"
-        echo "-------------------" >> "${config_dir}/client_configs.txt"
-    done <<< "$USERS"
+#     USERS=$(jq -r '.inbounds[0].users[] | .name + ":" + .password' "${CONFIG_PATH}")
+#     while IFS=: read -r username password; do
+#         SS_URL="ss://${SERVER_METHOD}:${password}@$(get_server_ip):${SERVER_PORT}#${username}"
+#         echo "用户: ${username}" >> "${config_dir}/client_configs.txt"
+#         echo "Shadowsocks URL: ${SS_URL}" >> "${config_dir}/client_configs.txt"
+#         echo "-------------------" >> "${config_dir}/client_configs.txt"
+#     done <<< "$USERS"
     
-    echo "✅ 客户端配置已保存至: ${config_dir}/client_configs.txt"
-}
+#     echo "✅ 客户端配置已保存至: ${config_dir}/client_configs.txt"
+# }
 
 # 同步配置
 config_sync() {

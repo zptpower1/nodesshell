@@ -108,22 +108,74 @@ generate_random_port() {
     echo "$port"  # 通过 echo 返回端口号
 }
 
-# 配置防火墙规则
+# 配置防火墙规则-配置文件自适应
 allow_firewall() {
-    echo "🛡️ 配置防火墙规则..."
-    if command -v ufw >/dev/null 2>&1; then
-        echo "使用 ufw 配置防火墙规则..."
-        ufw allow "${SERVER_PORT}"/tcp
-        ufw allow "${SERVER_PORT}"/udp
-    else
-        echo "ufw 不可用，使用 iptables 配置防火墙规则..."
-        iptables -C INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
-        iptables -I INPUT -p tcp --dport "${SERVER_PORT}" -j ACCEPT
-        iptables -C INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
-        iptables -I INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT
+     # 配置防火墙规则
+    if [ -f "${CONFIG_PATH}" ]; then
+        echo "🛡️ 开始批量配置防火墙规则..."
+        local ports=$(jq -r '.inbounds[].listen_port' "${CONFIG_PATH}")
+        for port in $ports; do
+            allow_firewall $port
+        done
+        echo "🛡️ 批量配置防火墙规则已完成..."
     fi
 }
 
+# 配置防火墙-单端口
+allow_firewall_port() {
+    local port="$1"
+    
+    if [ -z "$port" ]; then
+        echo "❌ 请提供端口号"
+        return 1
+    fi
+    
+    if command -v ufw >/dev/null 2>&1; then
+        echo "   使用 ufw 配置防火墙规则 (端口: ${port})..."
+        ufw allow "${port}"  # ufw 会自动允许 TCP 和 UDP
+    else
+        echo "   使用 iptables 配置防火墙规则 (端口: ${port})..."
+        for proto in tcp udp; do
+            iptables -C INPUT -p $proto --dport "${port}" -j ACCEPT 2>/dev/null || \
+            iptables -I INPUT -p $proto --dport "${port}" -j ACCEPT
+        done
+    fi
+    echo "✅ 端口 ${port} 已开放"
+}
+
+# 移除防火墙规则-配置文件自适应
+delete_firewall() {
+    # 移除防火墙规则
+    if [ -f "${CONFIG_PATH}" ]; then
+        echo "🛡️ 开始批量移除防火墙规则..."
+        local ports=$(jq -r '.inbounds[].listen_port' "${CONFIG_PATH}")
+        for port in $ports; do
+            delete_firewall $port
+        done
+        echo "🛡️ 批量移除防火墙规则已完成..."
+    fi
+}
+
+# 移除防火墙-单端口
+delete_firewall_port() {
+    local port="$1"
+    
+    if [ -z "$port" ]; then
+        echo "❌ 请提供端口号"
+        return 1
+    }
+    
+    if command -v ufw >/dev/null 2>&1; then
+        echo "   使用 ufw 移除防火墙规则 (端口: ${port})..."
+        ufw delete allow "${port}"
+    else
+        echo "   使用 iptables 移除防火墙规则 (端口: ${port})..."
+        for proto in tcp udp; do
+            iptables -D INPUT -p $proto --dport "${port}" -j ACCEPT 2>/dev/null || true
+        done
+    fi
+    echo "✅ 端口 ${port} 已关闭"
+}
 
 # 初始化目录结构
 init_directories() {

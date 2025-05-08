@@ -26,8 +26,13 @@ install_sing_box() {
     mv /tmp/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/
     rm -rf /tmp/sing-box*
 
+    # 初始化基础配置文件
     config_create_base
+    # 创建系统服务
     service_install
+    # 批量配置防火墙规则
+    allow_firewall
+    
     echo "✅ Sing-box 已安装"
 }
 
@@ -62,11 +67,6 @@ upgrade_sing_box() {
     # 安装新版本
     install_sing_box
     
-    # 恢复配置
-    # if [ -f "${backup_dir}/config.json" ]; then
-    #     cp "${backup_dir}/config.json" "${CONFIG_PATH}"
-    # fi
-    
     # 重启服务
     service_restart
 
@@ -98,6 +98,9 @@ uninstall_sing_box() {
 
     # 删除服务文件
     service_remove
+
+    #批量删除防火墙规则
+    delete_firewall
     
     echo "✅ 卸载完成"
 }

@@ -33,5 +33,12 @@ function config_protocol_setup() {
             ;;
     esac
 
+    # 同步配置
+    config_sync
+    # 配置防火墙
+    allow_firewall
+    #重启服务
+    service_restart
+    # 检查服务状态
     service_check
 }
