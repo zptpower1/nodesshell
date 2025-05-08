@@ -80,7 +80,7 @@ function config_protocol_list() {
 function config_protocol_remove() {
     config_protocol_list  # 调用 list 函数展示已安装协议
 
-    read -p "请选择要卸载的协议 [1-$(config_protocol_list_last_count)]: " choice
+    read -p "请选择要卸载的协议 [1-$config_protocol_list_last_count]: " choice
     
     # 验证输入
     if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -ge "$index" ]; then
