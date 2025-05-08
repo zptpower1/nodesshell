@@ -71,6 +71,7 @@ function config_protocol_list() {
         printf "%-6s%-20s%-20s%-6s\n" "$index)" "$tag" "$type" "$port"
         ((index++))
     done <<< "$inbounds_info"
+    export config_protocol_list_last_count=$((index-1))
     
     echo "----------------------------------------"
 }
@@ -78,8 +79,8 @@ function config_protocol_list() {
 # 卸载协议
 function config_protocol_remove() {
     config_protocol_list  # 调用 list 函数展示已安装协议
-    
-    read -p "请选择要卸载的协议 [1-$((index-1))]: " choice
+
+    read -p "请选择要卸载的协议 [1-$(config_protocol_list_last_count)]: " choice
     
     # 验证输入
     if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -ge "$index" ]; then
