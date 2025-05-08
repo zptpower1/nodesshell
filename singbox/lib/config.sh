@@ -4,7 +4,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 
 # 创建基础配置
-create_base_config() {
+config_create_base() {
     # 检查目录是否存在，不存在则创建
     if [ ! -d "${SING_BASE_PATH}" ]; then
         mkdir -p "${SING_BASE_PATH}"
@@ -60,7 +60,7 @@ generate_client_configs() {
 }
 
 # 同步配置
-sync_config() {
+config_sync() {
     if [ ! -f "${BASE_CONFIG_PATH}" ] || [ ! -f "${USERS_PATH}" ]; then
         echo "❌ 基础配置文件或用户配置文件不存在"
         return 1
@@ -78,7 +78,6 @@ sync_config() {
     # 合并基础配置和用户配置
     jq -s --argjson whitelist "$(printf '%s\n' "${!whitelist[@]}" | jq -R . | jq -s .)" \
         '.[0] * {"inbounds":[.[0].inbounds[] | select(.type as $type | $whitelist | index($type)) | select(.method as $method | test($whitelist[$type])) | .users = .[1].users]}' \
-        --argjson whitelist "$(printf '%s\n' "${!whitelist[@]}" | jq -R . | jq -s .)" \
         "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}"
     
     # 检查合并后的配置文件是否有效
@@ -96,7 +95,7 @@ sync_config() {
 }
 
 # 备份配置
-backup_config() {
+config_backup() {
     check_root
     local backup_time=$(date +%Y%m%d_%H%M%S)
     local backup_file="${BACKUP_DIR}/config_${backup_time}.tar.gz"
@@ -107,7 +106,7 @@ backup_config() {
 }
 
 # 还原配置
-restore_config() {
+config_restore() {
     check_root
     local backup_file="$1"
     
@@ -128,7 +127,7 @@ restore_config() {
 }
 
 # 显示配置
-show_config() {
+config_show() {
     check_root
     if [ -f "${CONFIG_PATH}" ]; then
         echo "📄 当前配置："
@@ -139,7 +138,7 @@ show_config() {
 }
 
 # 检查配置文件
-check_config() {
+config_check() {
     if [ ! -f "${CONFIG_PATH}" ]; then
         echo "❌ 配置文件不存在"
         return 1

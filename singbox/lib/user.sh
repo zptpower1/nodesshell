@@ -44,7 +44,7 @@ add_user() {
     jq ".users += [${user_config}]" "${USERS_PATH}" > "${temp_file}"
     mv "${temp_file}" "${USERS_PATH}"
 
-    sync_config
+    config_sync
     echo "✅ 用户 ${name} 添加成功"
     generate_client_config "${name}"
 }
@@ -63,7 +63,7 @@ delete_user() {
     mv "${temp_file}" "${USERS_PATH}"
     
 
-    sync_config
+    config_sync
     echo "✅ 用户 ${name} 删除成功"
 }
 
