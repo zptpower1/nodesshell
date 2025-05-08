@@ -89,10 +89,7 @@ uninstall_sing_box() {
     fi
     
     # 备份配置
-    if [ -f "${CONFIG_PATH}" ]; then
-        echo "📦 备份配置到 ${BACKUP_DIR}"
-        cp "${CONFIG_PATH}" "${BACKUP_DIR}/"
-    fi
+    config_backup
     
     # 删除文件
     echo "🗑️ 删除文件..."
