@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 全局变量
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 CONFIGS_DIR="${SCRIPT_DIR}/configs"
 LOGS_DIR="${SCRIPT_DIR}/logs"
 
