@@ -61,7 +61,7 @@ generate_client_config() {
                 echo
     
                 source "$(dirname "${BASH_SOURCE[0]}")/ss/info.sh"
-                generate_url "$method" "$server_key" "$realpwd" "$server_ip" "$port" "$node_name" "$name"
+                generate_url "$method" "$server_key" "$realpwd" "$server_ip" "$port" "$node_name-$port" "$name"
                 ;;
             "vless")
                 local uuid=$(echo "$inbound" | jq -r ".users[] | select(.name == \"${name}\") | .uuid")
@@ -91,7 +91,7 @@ generate_client_config() {
                 echo
     
                 source "$(dirname "${BASH_SOURCE[0]}")/vless/info.sh"
-                generate_url "$uuid" "$server_ip" "$port" "$node_name" "$name" "$host" "$pbk" "$sid"
+                generate_url "$uuid" "$server_ip" "$port" "$node_name-$port" "$name" "$host" "$pbk" "$sid"
                 ;;
             *)
                 echo "⚠️ 未知协议: ${protocol}"

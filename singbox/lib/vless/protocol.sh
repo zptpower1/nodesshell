@@ -36,11 +36,11 @@ add_protocol() {
   "sniff_override_destination": true,
   "tls": {
         "enabled": true,
-        "server_name": "icloud.cdn-apple.com",
+        "server_name": "www.cloudflare.com",
         "reality": {
           "enabled": true,
           "handshake": {
-            "server": "icloud.cdn-apple.com",
+            "server": "www.cloudflare.com",
             "server_port": 443
           },
           "private_key": "${private_key}",
