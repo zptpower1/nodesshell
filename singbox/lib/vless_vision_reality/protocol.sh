@@ -25,19 +25,11 @@ add_protocol() {
     local protocol="vless"
     local tag_name="vless-sb-in"
     
-    # 检查是否已存在同名的 inbound 模块
-    if jq -e ".inbounds[] | select(.tag == \"${tag_name}\")" "${BASE_CONFIG_PATH}" > /dev/null; then
-        # 为 tag 增加随机数后缀
-        local random_suffix=$((RANDOM % 10000))
-        tag_name="${tag_name}-${random_suffix}"
-        echo "⚠️ 已存在同名的 inbound 模块，使用新的 tag：${tag_name}"
-    fi
-
     # 定义新的 inbound 模块
     local new_inbound=$(cat <<EOF
 {
   "type": "${protocol}",
-  "tag": "${tag_name}",
+  "tag": "${tag_name}-$port",
   "listen": "::",
   "listen_port": ${port},
   "sniff": true,
