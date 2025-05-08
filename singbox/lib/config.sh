@@ -242,3 +242,173 @@ config_check() {
     rm -f "${temp_log}"
     echo "✅ 配置文件有效"
 }
+
+# 同步配置
+config_sync() {
+    # 定义白名单和密钥映射
+    local method_map='{
+        "2022-blake3-aes-128-gcm": "password_16",
+        "2022-blake3-aes-256-gcm": "password_32",
+        "2022-blake3-chacha20-poly1305": "password_32"
+    }'
+
+    # 运行 jq 合并
+    echo "DEBUG: Running jq command"
+    if ! jq -s --argjson method_map "${method_map}" '
+        .[0] as $base |
+        .[1] as $users |
+        # 验证 users 数组
+        if ($users.users | type) != "array" then
+            error("users.json must contain a valid users array")
+        else
+            # 验证 inbounds 数组
+            if ($base.inbounds | type) != "array" then
+                error("base_config.json must contain a valid inbounds array")
+            else
+                $base * {
+                    "inbounds": [
+                        ($base.inbounds[] | 
+                        if .type == "shadowsocks" then
+                            . + {
+                                "users": ($users.users | map(
+                                    {
+                                        "name": .name,
+                                        "password": 
+                                            if $method_map[.method] == "password_16" then
+                                                .password_16
+                                            elif $method_map[.method] == "password_32" then
+                                                .password_32
+                                            else
+                                                .uuid
+                                            end
+                                    }
+                                ))
+                            }
+                        elif .type == "vless" or .type == "vmess" then
+                            . + {
+                                "users": ($users.users | map(
+                                    {
+                                        "name": .name,
+                                        "uuid": .uuid
+                                    }
+                                ))
+                            }
+                        else
+                            .
+                        end)
+                    ]
+                }
+            end
+        end
+    ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}" 2> "${temp_file}.err"; then
+        echo "❌ jq 命令执行失败: $(cat ${temp_file}.err)"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: jq command completed"
+
+    # 检查 jq 错误
+    if [ -s "${temp_file}.err" ]; then
+        echo "❌ jq 错误: $(cat ${temp_file}.err)"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: No jq errors"
+
+    # 检查输出文件
+    if [ ! -s "${temp_file}" ]; then
+        echo "❌ 临时文件为空"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: Temporary file has content"
+
+    # 验证输出 JSON
+    if ! jq '.' "${temp_file}" >/dev/null 2>&1; then
+        echo "❌ 配置文件格式无效"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: Output JSON is valid"
+
+    # 移动文件
+    if ! mv "${temp_file}" "${CONFIG_PATH}"; then
+        echo "❌ 无法移动临时文件到 ${CONFIG_PATH}"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
+    echo "DEBUG: File moved to ${CONFIG_PATH}"
+
+    # 设置权限
+    chmod 644 "${CONFIG_PATH}" || {
+        echo "❌ 无法设置 ${CONFIG_PATH} 权限"
+        return 1
+    }
+    rm -f "${temp_file}.err"
+    echo "DEBUG: Permissions set"
+
+    echo "✅ 配置同步完成"
+}
+
+# 备份配置
+config_backup() {
+    check_root
+    local backup_time=$(date +%Y%m%d_%H%M%S)
+    local backup_file="${BACKUP_DIR}/config_${backup_time}.tar.gz"
+    
+    mkdir -p "${BACKUP_DIR}"
+    tar -czf "${backup_file}" -C "$(dirname ${SING_BASE_PATH})" "$(basename ${SING_BASE_PATH})"
+    echo "✅ 配置已备份至：${backup_file}"
+}
+
+# 还原配置
+config_restore() {
+    check_root
+    local backup_file="$1"
+    
+    if [ -z "${backup_file}" ]; then
+        echo "❌ 请指定备份文件"
+        return 1
+    fi
+    
+    if [ ! -f "${backup_file}" ]; then
+        echo "❌ 备份文件不存在：${backup_file}"
+        return 1
+    fi
+    
+    stop_service
+    tar -xzf "${backup_file}" -C "$(dirname ${SING_BASE_PATH})"
+    start_service
+    echo "✅ 配置已还原"
+}
+
+# 显示配置
+config_show() {
+    check_root
+    if [ -f "${CONFIG_PATH}" ]; then
+        echo "📄 当前配置："
+        cat "${CONFIG_PATH}" | jq '.'
+    else
+        echo "❌ 配置文件不存在"
+    fi
+}
+
+# 检查配置文件
+config_check() {
+    if [ ! -f "${CONFIG_PATH}" ]; then
+        echo "❌ 配置文件不存在"
+        return 1
+    fi
+
+    # 使用 sing-box 检查配置文件，并将错误输出到临时文件
+    local temp_log=$(mktemp)
+    if ! $SING_BIN check -c "${CONFIG_PATH}" 2> "${temp_log}"; then
+        echo "❌ 配置文件格式无效"
+        cat "${temp_log}"  # 打印具体的错误信息
+        rm -f "${temp_log}"
+        return 1
+    fi
+
+    rm -f "${temp_log}"
+    echo "✅ 配置文件有效"
+}
