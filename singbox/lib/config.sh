@@ -109,7 +109,6 @@ config_sync() {
 
     # 运行 jq 合并
     echo "DEBUG: Running jq command"
-    # 运行 jq 合并
     if ! jq -s --argjson method_map "${method_map}" '
         .[0] as $base |
         .[1] as $users |
@@ -123,7 +122,7 @@ config_sync() {
             else
                 $base * {
                     "inbounds": [
-                        ($base.inbounds[] | 
+                        ($base.inbounds[] | . as $parent |
                         if .type == "shadowsocks" then
                             . + {
                                 "users": ($users.users | map({
@@ -144,7 +143,7 @@ config_sync() {
                                     "uuid": .uuid
                                 }))
                             }
-                        else . end) as $parent
+                        else . end)
                     ]
                 }
             end
