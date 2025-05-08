@@ -239,16 +239,20 @@ main_with_args() {
                 remove)
                     config_protocol_remove
                     ;;
+                list)
+                    config_protocol_list
+                    ;;
                 *)
                     echo "配置管理命令用法: $0 config <subcommand> [args]"
                     echo "可用的子命令:"
                     echo "  sync           同步配置文件"
                     echo "  backup         备份配置"
                     echo "  restore <file> 还原配置"
-                    echo "  show           查看当前配置"
+                    echo "  show           查看完整配置文件"
                     echo "  check          检查配置文件"
                     echo "  setup          协议安装"
                     echo "  remove         协议卸载"
+                    echo "  list           列出已安装的协议"
                     exit 1
                     ;;
             esac
@@ -303,10 +307,11 @@ main_with_args() {
             echo "  config sync           同步用户配置到服务配置"
             echo "  config backup         备份所有配置文件"
             echo "  config restore <file> 从备份文件还原配置"
-            echo "  config show           查看当前服务配置"
+            echo "  config show           查看当前服务的完整配置"
             echo "  config check          检查配置文件格式"
             echo "  config setup          安装新的协议配置"
             echo "  config remove         卸载协议配置"
+            echo "  config list           列出已安装的协议"
             echo
             echo "日志管理命令:"
             echo "  logs                  实时查看最新50行日志"

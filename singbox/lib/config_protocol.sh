@@ -45,8 +45,40 @@ function config_protocol_setup() {
     service_check
 }
 
+# 列出已安装的协议
+function config_protocol_list() {
+    # 检查配置文件是否存在
+    if [ ! -f "${BASE_CONFIG_PATH}" ]; then
+        echo "❌ 基础配置文件不存在：${BASE_CONFIG_PATH}"
+        return 1
+    fi
+    
+    # 获取所有已安装的 inbound 信息
+    local inbounds_info=$(jq -r '.inbounds[] | "\(.tag)|\(.type)|\(.listen_port)"' "${BASE_CONFIG_PATH}")
+    if [ -z "$inbounds_info" ]; then
+        echo "❌ 当前没有已安装的协议服务"
+        return 1
+    fi
+    
+    # 显示所有已安装的协议
+    echo "已安装的协议服务列表:"
+    echo "----------------------------------------"
+    echo "序号  标签名(Tag)           类型(Type)           端口(Port)"
+    echo "----------------------------------------"
+    
+    local index=1
+    while IFS='|' read -r tag type port; do
+        printf "%-6s%-20s%-20s%-6s\n" "$index)" "$tag" "$type" "$port"
+        ((index++))
+    done <<< "$inbounds_info"
+    
+    echo "----------------------------------------"
+}
+
 # 卸载协议
 function config_protocol_remove() {
+    config_protocol_list  # 调用 list 函数展示已安装协议
+    
     # 检查配置文件是否存在
     if [ ! -f "${BASE_CONFIG_PATH}" ]; then
         echo "❌ 基础配置文件不存在：${BASE_CONFIG_PATH}"
