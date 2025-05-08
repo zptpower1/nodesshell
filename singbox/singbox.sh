@@ -29,6 +29,7 @@ function base_check() {
 function install_singbox() {
     install_sing_box
     config_create_base
+    config_sync
 }
 
 # 查看日志文件
