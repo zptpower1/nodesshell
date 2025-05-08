@@ -86,7 +86,7 @@ generate_key() {
             ;;
         *)
             echo "✅ 加密方法: $method，默认使用 UUID 生成密码"
-            uuidgen | tr -d '-' | head -c 32
+            uuidgen
             return 0
             ;;
     esac

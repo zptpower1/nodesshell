@@ -6,11 +6,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 generate_client_config() {
     local name="$1"
     
-    echo "📱 用户 ${name} 的配置信息："
+    echo "📱 ${name} 的客户端配置："
     echo "-------------------------------------------"
     
     # 从 CONFIG_PATH 获取服务器配置
-    echo "🔧 服务器配置 (来自 ${CONFIG_PATH})："
+    echo "🔧 协议配置信息 (来自 ${CONFIG_PATH})："
     local inbounds=$(jq -c '.inbounds[]' "${CONFIG_PATH}")
     local server_ip=$(get_server_ip)
     local node_domain=$(source "$ENV_FILE" && echo "$NODEDOMAIN")
