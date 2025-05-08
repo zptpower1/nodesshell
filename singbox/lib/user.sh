@@ -192,7 +192,7 @@ user_set_actived() {
     if ! check_user_exists "${name}"; then
         echo "❌ 用户 ${name} 不存在"
         return 1
-    }
+    fi
     
     # 设置用户状态
     local temp_file=$(mktemp)
