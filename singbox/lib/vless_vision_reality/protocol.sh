@@ -5,7 +5,7 @@ source "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/utils.sh"
 add_protocol() {
     local port="$1"
     
-    if [[ -z "$port" ]; then
+    if [ -z "$port" ]; then
         echo "❌ 请提供端口号"
         echo "用法: add_protocol <port>"
         return 1
