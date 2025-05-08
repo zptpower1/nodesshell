@@ -109,22 +109,30 @@ config_sync() {
     # 运行 jq 合并
     echo "DEBUG: Running jq command"
     if ! jq -s --argjson whitelist "${whitelist}" '
+        # 规范化输入
         (if .[0] | type == "array" then .[0][0] else .[0] end) as $base |
         (if .[1] | type == "array" then .[1][0] else .[1] end) as $users |
+        # 验证 $users.users
         if ($users.users | type) != "array" then
             error("users.json must contain a valid users array")
         else
-            $base * {
-                "inbounds": (
-                    $base.inbounds | map(
-                        if (.type == "shadowsocks" and (.method | test($whitelist[.type]))) then
-                            . + { "users": $users.users }
-                        else
-                            .
-                        end
+            # 验证 $base.inbounds
+            if ($base.inbounds | type) != "array" then
+                error("base_config.json must contain a valid inbounds array")
+            else
+                $base * {
+                    "inbounds": (
+                        $base.inbounds | map(
+                            # 确保条目是对象
+                            if (type == "object" and .type == "shadowsocks" and (.method | test($whitelist[.type]))) then
+                                . + { "users": $users.users }
+                            else
+                                .
+                            end
+                        )
                     )
-                )
-            }
+                }
+            end
         end
     ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}" 2> "${temp_file}.err"; then
         echo "❌ jq 命令执行失败: $(cat ${temp_file}.err)"
