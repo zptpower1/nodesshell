@@ -36,8 +36,65 @@ function view_logs() {
     fi
 }
 
+# 创建命令软链接
+create_command_links() {
+    echo "🔗 创建命令软链接..."
+    local script_path=$(realpath "${SCRIPT_DIR}/singbox.sh")
+    for cmd in config service user logs; do
+        local link_path="${SCRIPT_DIR}/${cmd}"
+        if [ -L "${link_path}" ]; then
+            rm -f "${link_path}"
+        fi
+        ln -sf "${script_path}" "${link_path}"
+        echo "   创建软链接: ${cmd}"
+    done
+}
+
+# 删除命令软链接
+remove_command_links() {
+    echo "🔗 删除命令软链接..."
+    for cmd in config service user logs; do
+        local link_path="${SCRIPT_DIR}/${cmd}"
+        if [ -L "${link_path}" ]; then
+            rm -f "${link_path}"
+            echo "   删除软链接: ${cmd}"
+        fi
+    done
+}
+
 # 主函数
 main() {
+    # 获取脚本名称（用于支持软链接调用）
+    local script_name=$(basename "$0")
+    script_name="${script_name%.*}"  # 移除扩展名
+    
+    # 根据脚本名称直接执行对应模块
+    case "$script_name" in
+        "config")
+            # 直接执行配置管理命令
+            main_with_args "config" "$@"
+            ;;
+        "service")
+            # 直接执行服务管理命令
+            main_with_args "service" "$@"
+            ;;
+        "user")
+            # 直接执行用户管理命令
+            main_with_args "user" "$@"
+            ;;
+        "logs")
+            # 直接执行日志查看命令
+            view_logs
+            ;;
+        *)
+            # 原有的命令处理逻辑
+            main_with_args "$@"
+            ;;
+    esac
+}
+
+# 处理命令参数
+main_with_args() {
     local command="$1"
     local subcommand="$2"
     local arg="$3"
@@ -47,12 +104,14 @@ main() {
         install)
             base_check
             install_sing_box
+            create_command_links  # 安装时创建软链接
             ;;
         upgrade)
             base_check
             upgrade_sing_box
             ;;
         uninstall)
+            remove_command_links  # 卸载时删除软链接
             uninstall_sing_box
             ;;
             
