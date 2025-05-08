@@ -53,7 +53,6 @@ add_protocol() {
           },
           "private_key": "${private_key}",
           "public_key": "${public_key}",
-          "show": false,
           "short_id": [
             "${short_id}"
           ]
