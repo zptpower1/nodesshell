@@ -83,7 +83,7 @@ generate_key() {
             $SING_BIN generate rand 32 --base64
             ;;
         "short-id")
-            $SING_BIN generate rand 8 --hex
+            $SING_BIN generate rand 3 --hex
             ;;
         "reality-keypair")
             $SING_BIN generate reality-keypair
