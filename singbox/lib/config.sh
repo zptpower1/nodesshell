@@ -109,6 +109,7 @@ config_sync() {
 
     # 运行 jq 合并
     echo "DEBUG: Running jq command"
+    # 运行 jq 合并
     if ! jq -s --argjson method_map "${method_map}" '
         .[0] as $base |
         .[1] as $users |
@@ -128,9 +129,9 @@ config_sync() {
                                 "users": ($users.users | map({
                                     "name": .name,
                                     "password": (
-                                        if .method == "2022-blake3-aes-128-gcm" then .password_16
-                                        elif .method == "2022-blake3-aes-256-gcm" then .password_32
-                                        elif .method == "2022-blake3-chacha20-poly1305" then .password_32
+                                        if $parent.method == "2022-blake3-aes-128-gcm" then .password_16
+                                        elif $parent.method == "2022-blake3-aes-256-gcm" then .password_32
+                                        elif $parent.method == "2022-blake3-chacha20-poly1305" then .password_32
                                         else .uuid
                                         end
                                     )
@@ -143,8 +144,8 @@ config_sync() {
                                     "uuid": .uuid
                                 }))
                             }
-                        else . end
-                    )]
+                        else . end) as $parent
+                    ]
                 }
             end
         end
