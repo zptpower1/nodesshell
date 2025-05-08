@@ -4,6 +4,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 生成服务配置文件内容
 generate_service_config() {
+    # 获取当前用户名
+    local current_user=$(whoami)
+    
     cat << EOF
 [Unit]
 Description=Sing-box Proxy Service
@@ -14,7 +17,7 @@ Type=simple
 ExecStart=${SING_BIN} run -c ${CONFIG_PATH}
 Restart=on-failure
 RestartPreventExitStatus=23
-User=nobody
+User=${current_user}
 
 [Install]
 WantedBy=multi-user.target

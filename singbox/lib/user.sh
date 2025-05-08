@@ -303,7 +303,7 @@ user_migrate() {
     fi
     
     # 备份原文件
-    cp "${USERS_PATH}" "${USERS_PATH}.bak.$(date +%Y%m%d%H%M%S)"
+    cp "${USERS_PATH}" "${USERS_PATH}.migratebak.$(date +%Y%m%d%H%M%S)"
     
     # 更新用户配置文件
     mv "${temp_file}" "${USERS_PATH}"
