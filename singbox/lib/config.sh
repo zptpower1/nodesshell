@@ -133,11 +133,20 @@ config_sync() {
                                     )
                                 }))
                             }
-                        elif .type == "vless" or .type == "vmess" then
+                        elif .type == "vless" then
                             . + {
                                 "users": ($users.users | map({
                                     "name": .name,
-                                    "uuid": .uuid
+                                    "uuid": .uuid,
+                                    "flow": "xtls-rprx-vision"
+                                }))
+                            }
+                         elif .type == "vmess" then
+                            . + {
+                                "users": ($users.users | map({
+                                    "name": .name,
+                                    "uuid": .uuid,
+                                    "flow": "xtls-rprx-vision"
                                 }))
                             }
                         else . end)

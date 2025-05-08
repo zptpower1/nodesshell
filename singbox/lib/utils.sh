@@ -74,14 +74,18 @@ function load_env() {
 # 生成密钥
 generate_key() {
     local method="$1"
-    local key_length
 
     case "$method" in
         "2022-blake3-aes-128-gcm")
-            key_length=16
-            ;;
+            $SING_BIN generate rand 16 --base64
         "2022-blake3-aes-256-gcm" | "2022-blake3-chacha20-poly1305")
-            key_length=32
+            $SING_BIN generate rand 32 --base64
+            ;;
+        "short-id")
+            $SING_BIN generate rand 8 --hex
+            ;;
+        "reality-keypair")
+            $SING_BIN generate reality-keypair
             ;;
         *)
             echo "✅ 加密方法: $method，默认使用 UUID 生成密码"
@@ -91,7 +95,7 @@ generate_key() {
     esac
 
     # openssl rand -base64 "$key_length" | head -c "$((key_length * 2))"
-    $SING_BIN generate rand $key_length --base64
+    # $SING_BIN generate rand $key_length --base64
 }
 
 # 生成随机端口并检查占用

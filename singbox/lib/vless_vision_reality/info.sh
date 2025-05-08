@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/utils.sh"
 
 # 生成 Shadowsocks URL
 generate_url() {

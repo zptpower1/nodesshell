@@ -20,12 +20,14 @@ function config_protocol_setup() {
     # 根据协议选择不同的安装脚本
     case "$protocol" in
         ss)
-            source "$(dirname "${BASH_SOURCE[0]}")/ss2022/setup.sh"
+            source "$(dirname "${BASH_SOURCE[0]}")/ss/setup.sh"
             setup_protocoler
             ;;
         vless_vision_reality)
-            # source "$(dirname "${BASH_SOURCE[0]}")/vless/setup.sh"
-            # setup_vless_service
+            source "$(dirname "${BASH_SOURCE[0]}")/vless_vision_reality/setup.sh"
+            setup_protocoler
+            # echo "⚠️ 程序猿即将吐血，请耐心等待: $protocol"
+            # return 1
             ;;
         *)
             echo "❌ 未知的协议类型: $protocol"
