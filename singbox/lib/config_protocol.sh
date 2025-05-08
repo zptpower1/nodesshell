@@ -66,21 +66,44 @@ function config_protocol_list() {
     echo "序号  标签名(Tag)           类型(Type)           端口(Port)"
     echo "----------------------------------------"
     
-    local index=1
     while IFS='|' read -r tag type port; do
         printf "%-6s%-20s%-20s%-6s\n" "$index)" "$tag" "$type" "$port"
-        ((index++))
     done <<< "$inbounds_info"
-    export config_protocol_list_last_count=$((index-1))
     
     echo "----------------------------------------"
 }
 
 # 卸载协议
 function config_protocol_remove() {
-    config_protocol_list  # 调用 list 函数展示已安装协议
-
-    read -p "请选择要卸载的协议 [1-$config_protocol_list_last_count]: " choice
+    # 检查配置文件是否存在
+    if [ ! -f "${BASE_CONFIG_PATH}" ]; then
+        echo "❌ 基础配置文件不存在：${BASE_CONFIG_PATH}"
+        return 1
+    fi
+    
+    # 获取所有已安装的 inbound 信息
+    local inbounds_info=$(jq -r '.inbounds[] | "\(.tag)|\(.type)|\(.listen_port)"' "${BASE_CONFIG_PATH}")
+    if [ -z "$inbounds_info" ]; then
+        echo "❌ 当前没有已安装的协议服务"
+        return 1
+    fi
+    
+    # 显示所有已安装的协议
+    echo "已安装的协议服务列表:"
+    echo "----------------------------------------"
+    echo "序号  标签名(Tag)           类型(Type)           端口(Port)"
+    echo "----------------------------------------"
+    
+    local index=1
+    local tag_list=()
+    while IFS='|' read -r tag type port; do
+        printf "%-6s%-20s%-20s%-6s\n" "$index)" "$tag" "$type" "$port"
+        tag_list+=("$tag")
+        ((index++))
+    done <<< "$inbounds_info"
+    
+    echo "----------------------------------------"
+    read -p "请选择要卸载的协议 [1-$((index-1))]: " choice
     
     # 验证输入
     if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -ge "$index" ]; then
