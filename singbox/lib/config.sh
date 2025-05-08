@@ -60,6 +60,7 @@ generate_client_configs() {
 }
 
 # 同步配置
+# 同步配置
 config_sync() {
     if [ ! -f "${BASE_CONFIG_PATH}" ] || [ ! -f "${USERS_PATH}" ]; then
         echo "❌ 基础配置文件或用户配置文件不存在"
@@ -82,32 +83,45 @@ config_sync() {
     
     # 合并基础配置和用户配置
     jq -s --argjson whitelist "${whitelist}" '
-        # 确保输入是对象，如果是数组取第一个元素
+        # 规范化输入，确保是对象
         (if .[0] | type == "array" then .[0][0] else .[0] end) as $base |
         (if .[1] | type == "array" then .[1][0] else .[1] end) as $users |
-        $base * {
-            "inbounds": (
-                $base.inbounds | map(
-                    if .type == "shadowsocks" and (.method | test($whitelist[.type])) then
-                        . + { "users": $users.users }
-                    else
-                        .
-                    end
+        # 验证 $users.users 存在且是数组
+        if ($users.users | type) != "array" then
+            error("users.json must contain a valid users array")
+        else
+            $base * {
+                "inbounds": (
+                    $base.inbounds | map(
+                        if (.type == "shadowsocks" and (.method | test($whitelist[.type]))) then
+                            . + { "users": $users.users }
+                        else
+                            .
+                        end
+                    )
                 )
-            )
-        }
-    ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}"
+            }
+        end
+    ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}" 2> "${temp_file}.err"
+    
+    # 检查合并结果
+    if [ -s "${temp_file}.err" ]; then
+        echo "❌ jq 错误: $(cat ${temp_file}.err)"
+        rm -f "${temp_file}" "${temp_file}.err"
+        return 1
+    fi
     
     # 检查合并后的配置文件是否有效
     if ! jq '.' "${temp_file}" >/dev/null 2>&1; then
         echo "❌ 配置文件格式无效"
-        rm -f "${temp_file}"
+        rm -f "${temp_file}" "${temp_file}.err"
         return 1
     fi
     
     # 更新配置文件
     mv "${temp_file}" "${CONFIG_PATH}"
     chmod 644 "${CONFIG_PATH}"
+    rm -f "${temp_file}.err"
     
     echo "✅ 配置同步完成"
 }
