@@ -24,7 +24,7 @@ function config_protocol_setup() {
             setup_protocoler
             ;;
         vless_vision_reality)
-            source "$(dirname "${BASH_SOURCE[0]}")/vless_vision_reality/setup.sh"
+            source "$(dirname "${BASH_SOURCE[0]}")/vless/setup.sh"
             setup_protocoler
             # echo "⚠️ 程序猿即将吐血，请耐心等待: $protocol"
             # return 1

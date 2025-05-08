@@ -25,36 +25,73 @@ generate_client_config() {
     for inbound in $inbounds; do
         local protocol=$(echo "$inbound" | jq -r '.type')
         local port=$(echo "$inbound" | jq -r '.listen_port')
-        local method=$(echo "$inbound" | jq -r '.method')
-        local server_key=$(echo "$inbound" | jq -r '.password')
-        local realpwd=$(echo "$inbound" | jq -r ".users[] | select(.name == \"${name}\") | .password")
-        
-        if [ -z "${realpwd}" ] || [ "${realpwd}" = "null" ]; then
-            continue
+        local server_ip=$(get_server_ip)
+        local node_domain=$(source "$ENV_FILE" && echo "$NODEDOMAIN")
+        local node_name=$(source "$ENV_FILE" && echo "$NODENAME")
+    
+        if [[ -n "$node_domain" ]]; then
+            server_ip="$node_domain"
         fi
-        
-        found_user=true
-        
-        if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
-            echo "❌ 服务器配置读取失败"
-            continue
-        fi
-        
-        echo "协议: ${protocol}"
-        echo "服务器: ${server_ip}"
-        echo "端口: ${port}"
-        echo "加密方法: ${method}"
-        echo "服务密钥: ${server_key}"
-        echo "用户密码: ${realpwd}"
-        echo
-        
-        # 根据协议生成不同的 URL
+    
+        found_user=false
+    
         case "$protocol" in
             "shadowsocks")
-                source "$(dirname "${BASH_SOURCE[0]}")/ss2022/info.sh"
+                local method=$(echo "$inbound" | jq -r '.method')
+                local server_key=$(echo "$inbound" | jq -r '.password')
+                local realpwd=$(echo "$inbound" | jq -r ".users[] | select(.name == \"${name}\") | .password")
+    
+                if [ -z "${realpwd}" ] || [ "${realpwd}" = "null" ]; then
+                    continue
+                fi
+    
+                found_user=true
+    
+                if [ -z "${port}" ] || [ "${port}" = "null" ] || [ -z "${method}" ] || [ "${method}" = "null" ]; then
+                    echo "❌ 服务器配置读取失败"
+                    continue
+                fi
+    
+                echo "协议: ${protocol}"
+                echo "服务器: ${server_ip}"
+                echo "端口: ${port}"
+                echo "加密方法: ${method}"
+                echo "服务密钥: ${server_key}"
+                echo "用户密码: ${realpwd}"
+                echo
+    
+                source "$(dirname "${BASH_SOURCE[0]}")/ss/info.sh"
                 generate_url "$method" "$server_key" "$realpwd" "$server_ip" "$port" "$node_name" "$name"
                 ;;
-            # 可以在这里添加其他协议的处理逻辑
+            "vless")
+                local uuid=$(echo "$inbound" | jq -r ".users[] | select(.name == \"${name}\") | .uuid")
+                local host=$(echo "$inbound" | jq -r '.tls.reality.handshake.server')
+                local pbk=$(jq -r ".inbounds[] | select(.tag == \"${tag}\") | .tls.reality.public_key" "${BASE_CONFIG_PATH}")
+                local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[]')
+    
+                if [ -z "${uuid}" ] || [ "${uuid}" = "null" ]; then
+                    continue
+                fi
+    
+                found_user=true
+    
+                if [ -z "${port}" ] || [ "${port}" = "null" ]; then
+                    echo "❌ 服务器配置读取失败"
+                    continue
+                fi
+    
+                echo "协议: ${protocol}"
+                echo "服务器: ${server_ip}"
+                echo "端口: ${port}"
+                echo "UUID: ${uuid}"
+                echo "Host: ${host}"
+                echo "Public Key: ${pbk}"
+                echo "Short ID: ${sid}"
+                echo
+    
+                source "$(dirname "${BASH_SOURCE[0]}")/vless/info.sh"
+                generate_url "$uuid" "$server_ip" "$port" "$node_name" "$name" "$host" "$pbk" "$sid"
+                ;;
             *)
                 echo "⚠️ 未知协议: ${protocol}"
                 ;;
