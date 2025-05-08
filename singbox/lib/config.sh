@@ -224,9 +224,9 @@ config_restore() {
         return 1
     fi
     
-    stop_service
+    service_stop
     tar -xzf "${backup_file}" -C "$(dirname ${SING_BASE_PATH})"
-    start_service
+    service_start
     echo "✅ 配置已还原"
 }
 

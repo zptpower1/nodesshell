@@ -29,7 +29,6 @@ function base_check() {
 function install_singbox() {
     install_sing_box
     create_base_config
-    setup_systemctl
 }
 
 # 查看日志文件
@@ -54,9 +53,6 @@ main() {
             base_check
             install_singbox
             ;;
-        setup)
-            setup_system
-            ;;
         upgrade)
             base_check
             upgrade_sing_box
@@ -70,11 +66,11 @@ main() {
             case "$subcommand" in
                 add)
                     user_add
-                    restart_service
+                    service_restart
                     ;;
                 del|delete|remove)
                     user_del "$arg"
-                    restart_service
+                    service_restart
                     ;;
                 list|ls)
                     user_list
@@ -84,15 +80,15 @@ main() {
                     ;;
                 reset)
                     user_reset "$arg"
-                    restart_service
+                    service_restart
                     ;;
                 enable)
                     user_set_actived "$arg" "true"
-                    restart_service
+                    service_restart
                     ;;
                 disable)
                     user_set_actived "$arg" "false"
-                    restart_service
+                    service_restart
                     ;;
                 migrate)
                     shift 2  # 移除 user 和 migrate 参数
@@ -122,36 +118,44 @@ main() {
         service)
             case "$subcommand" in
                 start)
-                    start_service
+                    service_start
                     ;;
                 restart)
-                    restart_service
+                    service_restart
                     ;;
                 stop)
-                    stop_service
+                    service_stop
                     ;;
                 disable)
-                    disable_service
+                    service_disable
                     ;;
                 enable)
-                    enable_service
+                    service_enable
+                    ;;
+                install)
+                    service_install
+                    ;;
+                remove)
+                    service_remove
                     ;;
                 status)
-                    status_service
+                    service_status
                     ;;
                 check)
-                    check_service
+                    service_check
                     ;;
                 *)
-                    echo "服务管理命令用法: $0 service <subcommand>"
+                    echo "服务(systemctl)管理命令用法: $0 service <subcommand>"
                     echo "可用的子命令:"
-                    echo "  start    启动服务"
-                    echo "  restart  重启服务"
-                    echo "  stop     停止服务"
-                    echo "  disable  禁用服务"
-                    echo "  enable   启用服务"
-                    echo "  status   查看服务状态"
-                    echo "  check    检查服务运行状态"
+                    echo "  install   安装系统服务"
+                    echo "  remove    卸载系统服务"
+                    echo "  start     启动服务"
+                    echo "  restart   重启服务"
+                    echo "  stop      停止服务"
+                    echo "  disable   禁用服务"
+                    echo "  enable    启用服务"
+                    echo "  status    查看服务状态"
+                    echo "  check     检查服务运行状态"
                     exit 1
                     ;;
             esac
@@ -209,7 +213,6 @@ main() {
             echo "            - 2022-blake3-aes-128-gcm (默认)"
             echo "            - 2022-blake3-aes-256-gcm"
             echo "            - 2022-blake3-chacha20-poly1305"
-            echo "  setup      配置系统服务"
             echo "  upgrade    升级服务"
             echo "  uninstall  卸载服务"
             echo

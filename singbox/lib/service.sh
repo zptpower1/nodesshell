@@ -2,9 +2,9 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
-# 创建systemctl服务
-setup_system() {
-    cat > "${SERVICE_FILE}" << EOF
+# 生成服务配置文件内容
+generate_service_config() {
+    cat << EOF
 [Unit]
 Description=Sing-box Proxy Service
 After=network.target nss-lookup.target
@@ -19,13 +19,19 @@ User=nobody
 [Install]
 WantedBy=multi-user.target
 EOF
+}
 
-    enable_service
+# 创建systemctl服务
+service_install() {
+    # 生成服务配置并写入文件
+    generate_service_config > "${SERVICE_FILE}"
+    
+    service_enable
     reload_service
 }
 
 # 检查服务状态
-check_service() {
+service_check() {
     if systemctl is-active --quiet ${SERVICE_NAME}; then
         # 显示 systemctl 的状态信息
         systemctl status ${SERVICE_NAME}
@@ -38,14 +44,14 @@ check_service() {
 }
 
 # 禁用服务
-disable_service() {
+service_disable() {
     echo "🔒 禁用服务..."
     if pgrep -x "sing-box" > /dev/null; then
-        stop_service
+        service_stop
     fi
     
     if [ -f "${SERVICE_FILE}" ]; then
-        rm -f "${SERVICE_FILE}"
+        systemctl disable ${SERVICE_NAME}
         echo "✅ 服务已禁用"
     else
         echo "⚠️ 服务配置不存在"
@@ -53,7 +59,7 @@ disable_service() {
 }
 
 # 查看服务状态详情
-status_service() {
+service_status() {
     echo "📊 服务状态检查..."
     
     # 检查进程
@@ -98,7 +104,7 @@ reload_service() {
     fi
 }
 
-enable_service() {
+service_enable() {
     echo "🔓 启用服务..."
     if [ -f "${SERVICE_FILE}" ]; then
         systemctl enable ${SERVICE_NAME}
@@ -109,27 +115,41 @@ enable_service() {
 }
 
 # 启动服务
-start_service() {
+service_start() {
     echo "🚀 启动服务..."
     check_config
     if [ -f "${SERVICE_FILE}" ]; then
         systemctl start ${SERVICE_NAME}
         echo "✅ 服务已启动"
-        check_service
+        service_check
     else
         echo "⚠️ 服务配置不存在"
     fi
 }
 
 # 停止服务
-stop_service() {
+service_stop() {
     echo "🛑 停止服务..."
     systemctl stop ${SERVICE_NAME}
 }
 
 # 重启服务
-restart_service() {
+service_restart() {
     echo "🔄 重启服务..."
-    stop_service
-    start_service
+    service_stop
+    service_start
+}
+
+# 卸载服务
+service_remove() {
+    echo "🗑️ 卸载服务..."
+    
+    if [ -f "${SERVICE_FILE}" ]; then
+        service_disable
+        rm -f "${SERVICE_FILE}"
+        systemctl daemon-reload
+        echo "✅ 服务已卸载"
+    else
+        echo "⚠️ 服务配置不存在"
+    fi
 }

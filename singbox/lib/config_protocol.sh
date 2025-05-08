@@ -33,5 +33,5 @@ function config_protocol_setup() {
             ;;
     esac
 
-    check_service
+    service_check
 }

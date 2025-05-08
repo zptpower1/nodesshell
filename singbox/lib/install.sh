@@ -9,7 +9,7 @@ get_latest_version() {
     sed 's/v//'
 }
 
-# 下载并安装sing-box
+# 下载并安装sing-box,制作自启动服务
 install_sing_box() {
     echo "📥 正在安装 Sing-box..."
     ARCH=$(uname -m)
@@ -25,6 +25,9 @@ install_sing_box() {
     tar -xzf /tmp/sing-box.tar.gz -C /tmp
     mv /tmp/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/
     rm -rf /tmp/sing-box*
+
+    service_install
+    echo "✅ Sing-box 已安装"
 }
 
 # 升级 sing-box
@@ -53,10 +56,7 @@ upgrade_sing_box() {
     fi
     
     # 备份当前配置
-    backup_config
-    
-    # 停止服务
-    stop_service
+    config_backup
     
     # 安装新版本
     install_sing_box
@@ -67,8 +67,8 @@ upgrade_sing_box() {
     # fi
     
     # 重启服务
-    nohup "${SING_BIN}" run -c "${CONFIG_PATH}" > /dev/null 2>&1 &
-    
+    service_restart
+
     echo "✅ 升级完成"
     echo "新版本：$("${SING_BIN}" version | grep 'sing-box version' | awk '{print $3}')"
 }
@@ -100,6 +100,9 @@ uninstall_sing_box() {
     echo "🗑️ 删除文件..."
     rm -f "${SING_BIN}"
     rm -rf "${SING_BASE_PATH}"
+
+    # 删除服务文件
+    service_remove
     
     echo "✅ 卸载完成"
 }

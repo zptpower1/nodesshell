@@ -41,7 +41,7 @@ check_network() {
 }
 
 # 检查服务状态
-check_service() {
+service_check() {
     echo "🔍 SS2022 服务状态："
     if pgrep -x "ssserver" > /dev/null; then
         echo "✅ 服务正在运行"
@@ -145,7 +145,7 @@ main() {
             check_network
             ;;
         service)
-            check_service
+            service_check
             ;;
         info)
             show_info
