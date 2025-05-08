@@ -57,7 +57,16 @@ add_protocol() {
             "${short_id}"
           ]
         }
-      }
+      },
+  "multiplex": {
+    "enabled": true,    
+    "padding": false,
+    "brutal": {
+      "enabled": true,
+      "up_mbps": 600,
+      "down_mbps": 600
+    }
+  }
 }
 EOF
 )
