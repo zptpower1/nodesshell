@@ -117,7 +117,7 @@ service_enable() {
 # 启动服务
 service_start() {
     echo "🚀 启动服务..."
-    check_config
+    config_check
     if [ -f "${SERVICE_FILE}" ]; then
         systemctl start ${SERVICE_NAME}
         echo "✅ 服务已启动"

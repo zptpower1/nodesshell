@@ -8,7 +8,7 @@ config_create_base() {
     # 检查基础配置文件是否已存在
     if [ -f "${BASE_CONFIG_PATH}" ]; then
         echo "✅ 基础配置文件已存在。"
-        read -p "是否要覆盖现有配置文件？(n[默认]/y): " choice
+        read -p "是否要覆盖现有的基础配置文件？(n[默认]/y): " choice
         if [ "$choice" != "y" ]; then
             echo "跳过创建"
             return 0
