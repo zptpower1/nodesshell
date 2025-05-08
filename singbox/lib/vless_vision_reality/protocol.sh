@@ -9,13 +9,13 @@ add_protocol() {
         echo "❌ 请提供端口号"
         echo "用法: add_protocol <port>"
         return 1
-    }
+    fi
     
     # 检查基础配置文件是否已存在
     if [ ! -f "${BASE_CONFIG_PATH}" ]; then
         echo "❌ 基础配置文件不存在：${BASE_CONFIG_PATH}"
         return 1
-    }
+    fi
     
     local short_id=$(generate_key "short-id")
      # 生成一次 reality 密钥对并解析
