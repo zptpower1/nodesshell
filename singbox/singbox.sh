@@ -40,7 +40,7 @@ function view_logs() {
 create_command_links() {
     echo "🔗 创建命令软链接..."
     local script_path=$(realpath "${SCRIPT_DIR}/singbox.sh")
-    for cmd in config service user logs; do
+    for cmd in config service user log; do  # 将 logs 改为 log
         local link_path="${SCRIPT_DIR}/${cmd}"
         if [ -L "${link_path}" ]; then
             rm -f "${link_path}"
@@ -53,7 +53,7 @@ create_command_links() {
 # 删除命令软链接
 remove_command_links() {
     echo "🔗 删除命令软链接..."
-    for cmd in config service user logs; do
+    for cmd in config service user log; do  # 将 logs 改为 log
         local link_path="${SCRIPT_DIR}/${cmd}"
         if [ -L "${link_path}" ]; then
             rm -f "${link_path}"
@@ -82,7 +82,7 @@ main() {
             # 直接执行用户管理命令
             main_with_args "user" "$@"
             ;;
-        "logs")
+        "log")  # 将 logs 改为 log
             # 直接执行日志查看命令
             view_logs
             ;;
