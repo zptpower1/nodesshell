@@ -97,16 +97,9 @@ config_sync() {
     }
     echo "DEBUG: Temporary file created: ${temp_file}"
 
-    # 定义白名单和密钥映射
-    local method_map='{
-        "2022-blake3-aes-128-gcm": "password_16",
-        "2022-blake3-aes-256-gcm": "password_32",
-        "2022-blake3-chacha20-poly1305": "password_32"
-    }'
-
     # 运行 jq 合并
     echo "DEBUG: Running jq command"
-    if ! jq -s --argjson method_map "${method_map}" '
+    if ! jq -s '
         .[0] as $base |
         .[1] as $users |
         # 验证 users 数组
@@ -133,22 +126,14 @@ config_sync() {
                                     )
                                 }))
                             }
-                        elif .type == "vless" then
+                        elif .type == "vless" or .type == "vmess" then
                             . + {
                                 "users": ($users.users | map({
                                     "name": .name,
                                     "uuid": .uuid,
                                     "flow": "xtls-rprx-vision"
                                 }))
-                            }
-                         elif .type == "vmess" then
-                            . + {
-                                "users": ($users.users | map({
-                                    "name": .name,
-                                    "uuid": .uuid,
-                                    "flow": "xtls-rprx-vision"
-                                }))
-                            }
+                            } | del(.tls.reality.public_key)  # 移除 public_key 字段
                         else . end)
                     ]
                 }
