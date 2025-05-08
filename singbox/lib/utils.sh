@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 CONFIGS_DIR="${SCRIPT_DIR}/configs"
 LOGS_DIR="${SCRIPT_DIR}/logs"
-BACKUP_DIR="${SCRIPT_DIR}/backup"
+BACKUP_DIR="${SCRIPT_DIR}/backups"
 
 CONFIG_PATH="${CONFIGS_DIR}/config.json"
 BASE_CONFIG_PATH="${CONFIGS_DIR}/base_config.json"
