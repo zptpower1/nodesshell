@@ -28,7 +28,7 @@ function base_check() {
 
 function install_singbox() {
     install_sing_box
-    create_base_config
+    config_create_base
 }
 
 # 查看日志文件
