@@ -1,21 +1,20 @@
 #!/bin/bash
 
 # 全局变量
-SING_BASE_PATH="/usr/local/etc/sing-box"
-CONFIG_PATH="${SING_BASE_PATH}/config.json"
-BASE_CONFIG_PATH="${SING_BASE_PATH}/base_config.json"
-USERS_PATH="${SING_BASE_PATH}/users.json"
-BACKUP_DIR="${SING_BASE_PATH}/backup"
-LOG_DIR="/var/log/sing-box"
-LOG_PATH="$LOG_DIR/sing-box.log"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIGS_DIR="${SCRIPT_DIR}/configs"
+LOGS_DIR="${SCRIPT_DIR}/logs"
+
+CONFIG_PATH="${CONFIGS_DIR}/config.json"
+BASE_CONFIG_PATH="${CONFIGS_DIR}/base_config.json"
+USERS_PATH="${CONFIGS_DIR}/users.json"
+BACKUP_DIR="${CONFIGS_DIR}/backup"
+LOG_PATH="${LOGS_DIR}/sing-box.log"
+
 SING_BIN="/usr/local/bin/sing-box"
 SERVICE_NAME="sing-box"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-ENV_FILE="$SCRIPT_DIR/.env"
-
-# 默认配置
-# SERVER_PORT=7388
-# SERVER_METHOD="2022-blake3-aes-128-gcm"
+ENV_FILE="${SCRIPT_DIR}/.env"
 
 # 检查root权限
 check_root() {
@@ -123,4 +122,18 @@ allow_firewall() {
         iptables -C INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT 2>/dev/null || \
         iptables -I INPUT -p udp --dport "${SERVER_PORT}" -j ACCEPT
     fi
+}
+
+
+# 初始化目录结构
+init_directories() {
+    # 创建配置目录
+    mkdir -p "${CONFIGS_DIR}"
+    mkdir -p "${BACKUP_DIR}"
+    # 创建日志目录
+    mkdir -p "${LOGS_DIR}"
+    
+    # 设置适当的权限
+    chmod 755 "${CONFIGS_DIR}" "${LOGS_DIR}"
+    chmod 700 "${BACKUP_DIR}"  # 备份目录设置更严格的权限
 }

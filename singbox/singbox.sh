@@ -19,19 +19,8 @@ function base_check() {
     check_root
     check_dependencies
 
-    # 确保配置目录存在
-    mkdir -p "${SING_BASE_PATH}"
-    # 确保日志目录存在
-    if [ ! -d "${LOG_DIR}" ]; then
-        mkdir -p "${LOG_DIR}"
-        chmod 777 "${LOG_DIR}"
-    fi
-    
-    # 确保 LOG_PATH 文件存在并设置权限
-    if [ ! -f "${LOG_PATH}" ]; then
-        touch "${LOG_PATH}"
-        chmod 666 "${LOG_PATH}"
-    fi
+    #初始化目录
+    init_directories
 
     # 确保用于配置文件已存在
     init_users_config
@@ -93,13 +82,37 @@ main() {
                 query|show)
                     user_query
                     ;;
+                reset)
+                    user_reset "$arg"
+                    restart_service
+                    ;;
+                enable)
+                    user_set_actived "$arg" "true"
+                    restart_service
+                    ;;
+                disable)
+                    user_set_actived "$arg" "false"
+                    restart_service
+                    ;;
+                migrate)
+                    shift 2  # 移除 user 和 migrate 参数
+                    user_migrate "$@"  # 传递剩余的所有参数
+                    ;;
                 *)
                     echo "用户管理命令用法: $0 user <subcommand> [args]"
                     echo "可用的子命令:"
-                    echo "  add    添加用户"
-                    echo "  del <username>    删除用户"
-                    echo "  list              列出所有用户"
-                    echo "  query  查询用户配置"
+                    echo "  add              添加用户"
+                    echo "  list             列出所有用户"
+                    echo "  query            查询用户配置"
+                    echo "  reset <username>  重置用户(密码)"
+                    echo "  enable <username>     启用用户"
+                    echo "  disable <username>    停用用户"
+                    echo "  del <username>   删除用户"
+                    echo "  migrate <field> [value] [type]  迁移用户数据"
+                    echo "    示例:"
+                    echo "      migrate actived true boolean  # 添加布尔类型字段"
+                    echo "      migrate email \"\" string      # 添加字符串类型字段"
+                    echo "      migrate score 0 number       # 添加数字类型字段"
                     exit 1
                     ;;
             esac
