@@ -5,11 +5,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 创建基础配置
 config_create_base() {
-    # 检查目录是否存在，不存在则创建
-    if [ ! -d "${SING_BASE_PATH}" ]; then
-        mkdir -p "${SING_BASE_PATH}"
-    fi
-    
     # 检查基础配置文件是否已存在
     if [ -f "${BASE_CONFIG_PATH}" ]; then
         echo "✅ 基础配置文件已存在。"
@@ -204,8 +199,7 @@ config_backup() {
     local backup_time=$(date +%Y%m%d_%H%M%S)
     local backup_file="${BACKUP_DIR}/config_${backup_time}.tar.gz"
     
-    mkdir -p "${BACKUP_DIR}"
-    tar -czf "${backup_file}" -C "$(dirname ${SING_BASE_PATH})" "$(basename ${SING_BASE_PATH})"
+    tar -czf "${backup_file}" -C "$(dirname ${CONFIGS_DIR})" "$(basename ${CONFIGS_DIR})"
     echo "✅ 配置已备份至：${backup_file}"
 }
 
@@ -225,7 +219,7 @@ config_restore() {
     fi
     
     service_stop
-    tar -xzf "${backup_file}" -C "$(dirname ${SING_BASE_PATH})"
+    tar -xzf "${backup_file}" -C "$(dirname ${CONFIGS_DIR})"
     service_start
     echo "✅ 配置已还原"
 }

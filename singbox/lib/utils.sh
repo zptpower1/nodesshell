@@ -4,11 +4,11 @@
 SCRIPT_DIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 CONFIGS_DIR="${SCRIPT_DIR}/configs"
 LOGS_DIR="${SCRIPT_DIR}/logs"
+BACKUP_DIR="${SCRIPT_DIR}/backup"
 
 CONFIG_PATH="${CONFIGS_DIR}/config.json"
 BASE_CONFIG_PATH="${CONFIGS_DIR}/base_config.json"
 USERS_PATH="${CONFIGS_DIR}/users.json"
-BACKUP_DIR="${CONFIGS_DIR}/backup"
 LOG_PATH="${LOGS_DIR}/sing-box.log"
 
 SING_BIN="/usr/local/bin/sing-box"

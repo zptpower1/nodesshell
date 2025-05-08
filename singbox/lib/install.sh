@@ -90,16 +90,13 @@ uninstall_sing_box() {
     
     # 备份配置
     if [ -f "${CONFIG_PATH}" ]; then
-        local backup_dir="${SING_BASE_PATH}/backup/uninstall_$(date +%Y%m%d_%H%M%S)"
-        mkdir -p "${backup_dir}"
-        echo "📦 备份配置到 ${backup_dir}"
-        cp "${CONFIG_PATH}" "${backup_dir}/"
+        echo "📦 备份配置到 ${BACKUP_DIR}"
+        cp "${CONFIG_PATH}" "${BACKUP_DIR}/"
     fi
     
     # 删除文件
     echo "🗑️ 删除文件..."
     rm -f "${SING_BIN}"
-    rm -rf "${SING_BASE_PATH}"
 
     # 删除服务文件
     service_remove
