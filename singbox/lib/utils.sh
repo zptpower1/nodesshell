@@ -115,7 +115,7 @@ allow_firewall() {
         echo "🛡️ 开始批量配置防火墙规则..."
         local ports=$(jq -r '.inbounds[].listen_port' "${CONFIG_PATH}")
         for port in $ports; do
-            allow_firewall $port
+            allow_firewall_port $port
         done
         echo "🛡️ 批量配置防火墙规则已完成..."
     fi
@@ -150,7 +150,7 @@ delete_firewall() {
         echo "🛡️ 开始批量移除防火墙规则..."
         local ports=$(jq -r '.inbounds[].listen_port' "${CONFIG_PATH}")
         for port in $ports; do
-            delete_firewall $port
+            delete_firewall_port $port
         done
         echo "🛡️ 批量移除防火墙规则已完成..."
     fi
