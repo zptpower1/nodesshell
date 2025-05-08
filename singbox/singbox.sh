@@ -236,6 +236,9 @@ main_with_args() {
                 setup)
                     config_protocol_setup
                     ;;
+                remove)
+                    config_protocol_remove
+                    ;;
                 *)
                     echo "配置管理命令用法: $0 config <subcommand> [args]"
                     echo "可用的子命令:"
@@ -245,6 +248,7 @@ main_with_args() {
                     echo "  show           查看当前配置"
                     echo "  check          检查配置文件"
                     echo "  setup          协议安装"
+                    echo "  remove         协议卸载"
                     exit 1
                     ;;
             esac
@@ -302,6 +306,7 @@ main_with_args() {
             echo "  config show           查看当前服务配置"
             echo "  config check          检查配置文件格式"
             echo "  config setup          安装新的协议配置"
+            echo "  config remove         卸载协议配置"
             echo
             echo "日志管理命令:"
             echo "  logs                  实时查看最新50行日志"
