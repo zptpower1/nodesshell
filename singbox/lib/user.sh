@@ -25,12 +25,31 @@ check_user_exists() {
 }
 
 # 添加用户
-add_user() {
-    local name="$1"
-    if [ -z "${name}" ]; then
-        echo "❌ 请提供用户名"
-        return 1
-    fi
+user_add() {
+    local name
+    
+    # 交互式获取用户名
+    while true; do
+        read -p "👤 请输入用户名: " name
+        if [ -z "${name}" ]; then
+            echo "❌ 用户名不能为空，请重新输入"
+            continue
+        fi
+        
+        # 检查用户名是否包含特殊字符
+        if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            echo "❌ 用户名只能包含字母、数字、下划线和连字符，请重新输入"
+            continue
+        fi
+        
+        # 检查用户是否已存在
+        if check_user_exists "${name}"; then
+            echo "❌ 用户 ${name} 已存在，请重新输入"
+            continue
+        fi
+        
+        break
+    done
     
     # 检查用户是否已存在
     if jq -e ".users[] | select(.name == \"${name}\")" "${USERS_PATH}" > /dev/null; then
@@ -50,7 +69,7 @@ add_user() {
 }
 
 # 删除用户
-delete_user() {
+user_del() {
     local name="$1"
     if [ -z "${name}" ]; then
         echo "❌ 请提供用户名"
@@ -68,7 +87,7 @@ delete_user() {
 }
 
 # 列出所有用户
-list_users() {
+user_list() {
     if [ ! -f "${USERS_PATH}" ]; then
         echo "📋 暂无用户"
         return 0
@@ -81,24 +100,31 @@ list_users() {
 }
 
 # 查询用户
-query_user() {
-    local name="$1"
-    if [ -z "${name}" ]; then
-        echo "❌ 请提供用户名"
-        return 1
-    fi
+user_query() {
+    local name
     
-    if [ ! -f "${USERS_PATH}" ]; then
-        echo "❌ 用户配置文件不存在"
-        return 1
-    fi
-    
-    local user_exists=$(jq -r ".users[] | select(.name == \"${name}\") | .name" "${USERS_PATH}")
-    
-    if [ -z "${user_exists}" ]; then
-        echo "❌ 用户 ${name} 不存在"
-        return 1
-    fi
+    # 交互式获取用户名
+    while true; do
+        read -p "👤 请输入要查询的用户名: " name
+        if [ -z "${name}" ]; then
+            echo "❌ 用户名不能为空，请重新输入"
+            continue
+        fi
+        
+        if [ ! -f "${USERS_PATH}" ]; then
+            echo "❌ 用户配置文件不存在"
+            return 1
+        fi
+        
+        local user_exists=$(jq -r ".users[] | select(.name == \"${name}\") | .name" "${USERS_PATH}")
+        
+        if [ -z "${user_exists}" ]; then
+            echo "❌ 用户 ${name} 不存在，请重新输入"
+            continue
+        fi
+        
+        break
+    done
     
     echo "✅ 找到用户 ${name}"
     echo "-------------------------------------------"

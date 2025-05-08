@@ -80,26 +80,26 @@ main() {
         user)
             case "$subcommand" in
                 add)
-                    add_user "$arg"
+                    user_add
                     restart_service
                     ;;
                 del|delete|remove)
-                    delete_user "$arg"
+                    user_del "$arg"
                     restart_service
                     ;;
                 list|ls)
-                    list_users
+                    user_list
                     ;;
                 query|show)
-                    query_user "$arg"
+                    user_query
                     ;;
                 *)
                     echo "用户管理命令用法: $0 user <subcommand> [args]"
                     echo "可用的子命令:"
-                    echo "  add <username>    添加用户"
+                    echo "  add    添加用户"
                     echo "  del <username>    删除用户"
                     echo "  list              列出所有用户"
-                    echo "  query <username>  查询用户配置"
+                    echo "  query  查询用户配置"
                     exit 1
                     ;;
             esac

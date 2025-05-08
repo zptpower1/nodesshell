@@ -69,16 +69,25 @@ config_sync() {
     # 创建临时文件
     local temp_file=$(mktemp)
     
-    # 定义支持多用户的协议和方法白名单，使用正则表达式
-    local whitelist=(
-        ["shadowsocks"]="^2022-blake3-aes-.*-gcm$"
-        # 可以在这里添加其他协议和对应的方法
-    )
+    # 定义支持多用户的协议和方法白名单，作为 JSON 对象
+    local whitelist='{
+        "shadowsocks": "^2022-blake3-aes-.*-gcm$"
+    }'
     
     # 合并基础配置和用户配置
-    jq -s --argjson whitelist "$(printf '%s\n' "${!whitelist[@]}" | jq -R . | jq -s .)" \
-        '.[0] * {"inbounds":[.[0].inbounds[] | select(.type as $type | $whitelist | index($type)) | select(.method as $method | test($whitelist[$type])) | .users = .[1].users]}' \
-        "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}"
+    jq --argjson whitelist "${whitelist}" '
+        .[0] * {
+            "inbounds": (
+                .[0].inbounds | map(
+                    if .type == "shadowsocks" and (.method | test($whitelist[.type])) then
+                        . + { "users": .[1].users }
+                    else
+                        .
+                    end
+                )
+            )
+        }
+    ' "${BASE_CONFIG_PATH}" "${USERS_PATH}" > "${temp_file}"
     
     # 检查合并后的配置文件是否有效
     if ! jq '.' "${temp_file}" >/dev/null 2>&1; then
