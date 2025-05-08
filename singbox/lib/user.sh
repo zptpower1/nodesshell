@@ -156,7 +156,7 @@ user_reset() {
     if ! check_user_exists "${name}"; then
         echo "❌ 用户 ${name} 不存在"
         return 1
-    }
+    fi
     
     # 生成新的密钥
     local uuid=$(uuidgen)
