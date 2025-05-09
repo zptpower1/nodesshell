@@ -5,6 +5,14 @@
 update_packages() {
     echo "更新系统包..."
     sudo apt update && sudo apt upgrade -y
+
+    # 安装常用工具
+    echo "安装常用工具..."
+    sudo apt install curl wget git htop tree unzip zip
+    sudo apt install net-tools #网络工具
+    sudo apt install iftop #查看实时网络流量
+    sudo apt install nethogs  #定位占用带宽的进程
+    sudo apt install vnstat #历史流量统计
 }
 
 # 检测当前swap状态

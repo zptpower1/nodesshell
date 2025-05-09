@@ -35,17 +35,17 @@ install_cloudflared() {
     echo "✅ Cloudflare Tunnel 安装成功"
 }
 
-# 卸载Cloudflare Tunnel
-uninstall_cloudflared() {
-    echo "卸载Cloudflare Tunnel..."
-    sudo apt remove --purge -y cloudflared
+# 卸载Cloudflare Tunnel服务
+uninstall_cloudflared_service() {
+    echo "卸载Cloudflare Tunnel服务..."
+    sudo cloudflared service uninstall
 
-    if command -v cloudflared &> /dev/null; then
-        echo "❌ Cloudflare Tunnel 卸载失败"
+    if [ -f /etc/systemd/system/cloudflared.service ]; then
+        echo "❌ Cloudflare Tunnel 服务卸载失败"
         exit 1
     fi
 
-    echo "✅ Cloudflare Tunnel 已成功卸载"
+    echo "✅ Cloudflare Tunnel 服务已成功卸载"
 }
 
 # 加入已有的Cloudflare Tunnel
@@ -61,6 +61,7 @@ check_root
 
 case "$1" in
     install)
+        uninstall_cloudflared_service  # 确保卸载旧服务
         install_cloudflared
         if [ -z "$2" ]; then
             echo "请输入Cloudflare Tunnel的token："
