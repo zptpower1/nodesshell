@@ -1,6 +1,47 @@
 #!/bin/bash
 # vps本地环境的检测和优化
 
+# 优化APT源
+optimize_apt_sources() {
+    echo "优化APT源..."
+    local codename=$(lsb_release -cs)
+
+    # 根据系统版本设置新的APT源
+    case "$codename" in
+        focal|bionic)
+            local sources_list="/etc/apt/sources.list"
+            sudo cp $sources_list ${sources_list}.bak
+            echo "deb http://archive.ubuntu.com/ubuntu/ $codename main restricted universe multiverse" | sudo tee $sources_list
+            echo "deb http://archive.ubuntu.com/ubuntu/ $codename-updates main restricted universe multiverse" | sudo tee -a $sources_list
+            echo "deb http://archive.ubuntu.com/ubuntu/ $codename-backports main restricted universe multiverse" | sudo tee -a $sources_list
+            echo "deb http://security.ubuntu.com/ubuntu $codename-security main restricted universe multiverse" | sudo tee -a $sources_list
+            ;;
+        noble)
+            local new_sources_list="/etc/apt/sources.list.d/ubuntu.sources"
+            echo "Types: deb" | sudo tee $new_sources_list
+            echo "URIs: http://mirror.fsmg.org/ubuntu/" | sudo tee -a $new_sources_list
+            echo "Suites: noble noble-updates noble-backports noble-security" | sudo tee -a $new_sources_list
+            echo "Components: main restricted universe multiverse" | sudo tee -a $new_sources_list
+            echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" | sudo tee -a $new_sources_list
+
+            echo "Types: deb" | sudo tee -a $new_sources_list
+            echo "URIs: http://archive.ubuntu.com/ubuntu/" | sudo tee -a $new_sources_list
+            echo "Suites: noble noble-updates noble-backports" | sudo tee -a $new_sources_list
+            echo "Components: main restricted universe multiverse" | sudo tee -a $new_sources_list
+            echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" | sudo tee -a $new_sources_list
+
+            echo "Types: deb" | sudo tee -a $new_sources_list
+            echo "URIs: http://security.ubuntu.com/ubuntu/" | sudo tee -a $new_sources_list
+            echo "Suites: noble-security" | sudo tee -a $new_sources_list
+            echo "Components: main restricted universe multiverse" | sudo tee -a $new_sources_list
+            echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" | sudo tee -a $new_sources_list
+            ;;
+        *)
+            echo "未识别的系统版本：$codename，使用默认源。"
+            ;;
+    esac
+}
+
 # 更新包
 update_packages() {
     echo "更新系统包..."
@@ -92,10 +133,23 @@ network_optimization() {
     sudo sysctl -p
 }
 
+# 优化DNS设置
+optimize_dns() {
+    echo "优化DNS设置..."
+    # 使用Cloudflare的DNS服务器
+    local resolv_conf="/etc/resolv.conf"
+    sudo cp $resolv_conf ${resolv_conf}.bak
+    echo "nameserver 1.1.1.1" | sudo tee $resolv_conf
+    echo "nameserver 1.0.0.1" | sudo tee -a $resolv_conf
+    echo "DNS设置已优化为使用Cloudflare的DNS服务器。"
+}
+
 # 主函数调用
+optimize_dns
+optimize_apt_sources
+network_optimization
 update_packages
 enable_swap
-network_optimization
 
 echo "优化完成！"
 
