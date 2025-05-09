@@ -26,10 +26,10 @@ install_sing_box() {
     mv /tmp/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/
     rm -rf /tmp/sing-box*
 
-    # 初始化基础配置文件
-    config_create_base
     # 创建系统服务
     service_install
+    # 初始化基础配置文件
+    config_create_base
     # 批量配置防火墙规则
     allow_firewall
     
