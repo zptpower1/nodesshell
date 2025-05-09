@@ -22,6 +22,19 @@ install_cloudflared() {
     echo "✅ Cloudflare Tunnel 安装成功"
 }
 
+# 卸载Cloudflare Tunnel
+uninstall_cloudflared() {
+    echo "卸载Cloudflare Tunnel..."
+    sudo apt remove --purge -y cloudflared
+
+    if command -v cloudflared &> /dev/null; then
+        echo "❌ Cloudflare Tunnel 卸载失败"
+        exit 1
+    fi
+
+    echo "✅ Cloudflare Tunnel 已成功卸载"
+}
+
 # 加入已有的Cloudflare Tunnel
 join_existing_tunnel() {
     local token="$1"
@@ -32,13 +45,21 @@ join_existing_tunnel() {
 
 # 主函数调用
 check_root
-install_cloudflared
 
-# 检查是否提供了token参数
-if [ -z "$1" ]; then
-    echo "❌ 请提供Cloudflare Tunnel的token作为参数。"
-    exit 1
-fi
-
-# 使用命令行参数传递token
-join_existing_tunnel "$1"
+case "$1" in
+    install)
+        install_cloudflared
+        if [ -z "$2" ]; then
+            echo "❌ 请提供Cloudflare Tunnel的token作为参数。"
+            exit 1
+        fi
+        join_existing_tunnel "$2"
+        ;;
+    uninstall)
+        uninstall_cloudflared
+        ;;
+    *)
+        echo "❌ 无效的命令。使用 'install' 或 'uninstall'。"
+        exit 1
+        ;;
+esac
