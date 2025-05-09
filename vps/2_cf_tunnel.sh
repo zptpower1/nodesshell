@@ -11,7 +11,20 @@ check_root() {
 # 更新包管理器并安装Cloudflare Tunnel
 install_cloudflared() {
     echo "更新系统包..."
-    sudo apt update && sudo apt install -y cloudflared
+    sudo apt update
+
+    # 获取当前安装的版本
+    current_version=$(cloudflared --version 2>/dev/null | awk '{print $2}')
+    # 获取可用的版本
+    available_version=$(apt-cache policy cloudflared | grep Candidate | awk '{print $2}')
+
+    if [ "$current_version" == "$available_version" ]; then
+        echo "Cloudflare Tunnel 已是最新版本，跳过安装。"
+        return
+    fi
+
+    echo "安装或更新Cloudflare Tunnel..."
+    sudo apt install -y cloudflared
 
     # 验证安装
     if ! command -v cloudflared &> /dev/null; then
@@ -50,10 +63,16 @@ case "$1" in
     install)
         install_cloudflared
         if [ -z "$2" ]; then
-            echo "❌ 请提供Cloudflare Tunnel的token作为参数。"
-            exit 1
+            echo "请输入Cloudflare Tunnel的token："
+            read token
+            if [ -z "$token" ]; then
+                echo "❌ 未提供有效的token。"
+                exit 1
+            fi
+        else
+            token="$2"
         fi
-        join_existing_tunnel "$2"
+        join_existing_tunnel "$token"
         ;;
     uninstall)
         uninstall_cloudflared
