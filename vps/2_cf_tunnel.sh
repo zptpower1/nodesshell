@@ -76,7 +76,7 @@ case "$1" in
         join_existing_tunnel "$token"
         ;;
     uninstall)
-        uninstall_cloudflared
+        uninstall_cloudflared_service
         ;;
     *)
         echo "❌ 无效的命令。使用 'install' 或 'uninstall'。"
