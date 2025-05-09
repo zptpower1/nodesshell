@@ -10,8 +10,30 @@ check_root() {
 
 # 安装Tailscale
 install_tailscale() {
+    # 检查是否已经安装Tailscale
+    if command -v tailscale &> /dev/null; then
+        echo "Tailscale 已经安装。"
+        read -p "是否要覆盖安装？(y/n): " overwrite
+        if [ "$overwrite" != "y" ]; then
+            echo "保持当前安装。"
+            return
+        fi
+        # 如果选择覆盖安装，先卸载
+        uninstall_tailscale
+    fi
+
     echo "安装Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | sh
+
+    # 交互式输入授权密钥
+    read -p "请输入Tailscale授权密钥: " auth_key
+    if [ -z "$auth_key" ]; then
+        echo "❌ 未提供有效的授权密钥。"
+        exit 1
+    fi
+
+    # 使用授权密钥启动Tailscale
+    sudo tailscale up --auth-key="$auth_key"
 
     # 验证安装
     if ! command -v tailscale &> /dev/null; then
@@ -50,8 +72,16 @@ stop_tailscale() {
 
 # 卸载Tailscale
 uninstall_tailscale() {
+    echo "停止Tailscale..."
+    sudo tailscale down
+
+    if [ $? -ne 0 ]; then
+        echo "❌ Tailscale 停止失败"
+        exit 1
+    fi
+
     echo "卸载Tailscale..."
-    sudo apt-get remove --purge -y tailscale
+    sudo apt remove --purge -y tailscale
 
     if command -v tailscale &> /dev/null; then
         echo "❌ Tailscale 卸载失败"
