@@ -12,7 +12,7 @@ generate_url() {
     local pbk="$7"
     local sid="$8"
 
-    local vless_url="vless://${uuid}@${server_ip}:${port}?encryption=none&flow=xtls-rprx-vision&type=tcp&security=reality&host=${host}&fp=chrome&pbk=${pbk}&sid=${sid}&udp=true#${node_name:-$name}"
+    local vless_url="vless://${uuid}@${server_ip}:${port}?encryption=none&flow=xtls-rprx-vision&type=tcp&security=reality&host=${host}&sni=${host}&fp=chrome&pbk=${pbk}&sid=${sid}&udp=true#${node_name:-$name}"
     local vless_url_base64=$(echo -n "${vless_url}" | base64 -w 0)
 
     echo "VLESS URL: ${vless_url}"
