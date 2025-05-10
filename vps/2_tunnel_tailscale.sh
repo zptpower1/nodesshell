@@ -25,11 +25,15 @@ install_tailscale() {
     echo "安装Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | sh
 
-    # 交互式输入授权密钥
-    read -p "请输入Tailscale授权密钥: " auth_key
+    # 检查是否提供了授权密钥参数
+    local auth_key="$2"
     if [ -z "$auth_key" ]; then
-        echo "❌ 未提供有效的授权密钥。"
-        exit 1
+        # 如果没有提供参数，则交互式输入授权密钥
+        read -p "请输入Tailscale授权密钥: " auth_key
+        if [ -z "$auth_key" ]; then
+            echo "❌ 未提供有效的授权密钥。"
+            exit 1
+        fi
     fi
 
     # 使用授权密钥启动Tailscale
