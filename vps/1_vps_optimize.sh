@@ -108,7 +108,7 @@ network_optimization() {
     net.ipv4.tcp_no_metrics_save=1
     net.ipv4.tcp_ecn=0
     net.ipv4.tcp_frto=0
-    net.ipv4.tcp_mtu_probing=0
+    net.ipv4.tcp_mtu_probing=1
     net.ipv4.tcp_rfc1337=0
     net.ipv4.tcp_sack=1
     net.ipv4.tcp_fack=1
@@ -117,8 +117,8 @@ network_optimization() {
     net.ipv4.tcp_moderate_rcvbuf=1
     net.core.rmem_max=33554432
     net.core.wmem_max=33554432
-    net.ipv4.tcp_rmem=4096 87380 33554432
-    net.ipv4.tcp_wmem=4096 16384 33554432
+    net.ipv4.tcp_rmem=4096 1048576 33554432
+    net.ipv4.tcp_wmem=4096 1048576 33554432
     net.ipv4.udp_rmem_min=8192
     net.ipv4.udp_wmem_min=8192
     net.ipv4.ip_forward=1
