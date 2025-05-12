@@ -8,17 +8,18 @@ check_root() {
     fi
 }
 
-# 高延迟+大流量类优化，跨境视频类应用的TCP参数(e.g., 4K streaming over CN2 GIA)
+# 高延迟+大流量激进专项优化，跨境视频类应用的TCP参数(e.g., 4K streaming over CN2 GIA)
 optimize_for_high_latency_video() {
     echo "Optimizing TCP for high-latency video applications..."
     sudo sysctl -w net.inet.tcp.mssdflt=1440
+    sudo sysctl -w net.inet.tcp.autosndbufmax=4194304
+    sudo sysctl -w net.inet.tcp.sendspace=131072
     sudo sysctl -w net.inet.tcp.autorcvbufmax=20971520
-    sudo sysctl -w net.inet.tcp.autosndbufmax=20971520
-    sudo sysctl -w net.inet.tcp.sendspace=4194304
     sudo sysctl -w net.inet.tcp.recvspace=4194304
     sudo sysctl -w net.inet.tcp.delayed_ack=1
-    sudo sysctl -w net.inet.tcp.win_scale_factor=4
+    sudo sysctl -w net.inet.tcp.win_scale_factor=8
     sudo sysctl -w net.inet.tcp.aggressive_rcvwnd_inc=2
+    sudo sysctl -w kern.ipc.maxsockbuf=33554432
     echo "High-latency video TCP settings applied:"
     sysctl net.inet.tcp.sendspace
     sysctl net.inet.tcp.recvspace
@@ -28,19 +29,21 @@ optimize_for_high_latency_video() {
     sysctl net.inet.tcp.delayed_ack
     sysctl net.inet.tcp.win_scale_factor
     sysctl net.inet.tcp.aggressive_rcvwnd_inc
+    sysctl kern.ipc.maxsockbuf
 }
 
-# 针对国内默认场景（浏览、游戏、国内视频）优化的功能
+# 适合国内低延迟场景（浏览、游戏、国内视频）功能
 optimize_for_domestic_default() {
     echo "Optimizing TCP for domestic default scenario (low latency, browsing, gaming, video)..."
     sudo sysctl -w net.inet.tcp.mssdflt=536
-    sudo sysctl -w net.inet.tcp.autorcvbufmax=4194304
     sudo sysctl -w net.inet.tcp.autosndbufmax=4194304
     sudo sysctl -w net.inet.tcp.sendspace=131072
+    sudo sysctl -w net.inet.tcp.autorcvbufmax=4194304
     sudo sysctl -w net.inet.tcp.recvspace=131072
     sudo sysctl -w net.inet.tcp.delayed_ack=3
     sudo sysctl -w net.inet.tcp.win_scale_factor=3
     sudo sysctl -w net.inet.tcp.aggressive_rcvwnd_inc=1
+    sudo sysctl -w kern.ipc.maxsockbuf=8388608
     echo "Domestic default TCP settings applied:"
     sysctl net.inet.tcp.sendspace
     sysctl net.inet.tcp.recvspace
@@ -50,19 +53,21 @@ optimize_for_domestic_default() {
     sysctl net.inet.tcp.delayed_ack
     sysctl net.inet.tcp.win_scale_factor
     sysctl net.inet.tcp.aggressive_rcvwnd_inc
+    sysctl kern.ipc.maxsockbuf
 }
 
-# 用于优化高延迟兼顾网页浏览和小视频的功能（例如，通过CN2 GIA观看YouTube 1080p视频）
+# 常规优化高延迟兼顾网页浏览和小视频的功能（例如，通过CN2 GIA观看YouTube 1080p视频）
 optimize_for_high_latency_browsing() {
     echo "Optimizing TCP for high-latency browsing and small video..."
     sudo sysctl -w net.inet.tcp.mssdflt=1440
-    sudo sysctl -w net.inet.tcp.autorcvbufmax=4194304
     sudo sysctl -w net.inet.tcp.autosndbufmax=4194304
-    sudo sysctl -w net.inet.tcp.sendspace=1048576
+    sudo sysctl -w net.inet.tcp.sendspace=131072
+    sudo sysctl -w net.inet.tcp.autorcvbufmax=20971520
     sudo sysctl -w net.inet.tcp.recvspace=1048576
     sudo sysctl -w net.inet.tcp.delayed_ack=1
     sudo sysctl -w net.inet.tcp.win_scale_factor=4
     sudo sysctl -w net.inet.tcp.aggressive_rcvwnd_inc=1
+    sudo sysctl -w kern.ipc.maxsockbuf=33554432
     echo "High-latency browsing and small video TCP settings applied:"
     sysctl net.inet.tcp.sendspace
     sysctl net.inet.tcp.recvspace
@@ -72,6 +77,7 @@ optimize_for_high_latency_browsing() {
     sysctl net.inet.tcp.delayed_ack
     sysctl net.inet.tcp.win_scale_factor
     sysctl net.inet.tcp.aggressive_rcvwnd_inc
+    sysctl kern.ipc.maxsockbuf
 }
 
 # 主函数调用
@@ -85,9 +91,9 @@ show_help() {
     echo "  -m, --mode <模式>         设置网络优化模式"
     echo ""
     echo "可用的网络优化模式:"
-    echo "  1, high_latency_video   - 高延迟大流量场景 (跨境4K视频)"
+    echo "  1, high_latency_video   - 高延迟大流量专项激进优化 (跨境4K视频)"
     echo "  2, domestic_default     - 国内默认场景 (游戏/会议/浏览) [默认]"
-    echo "  3, high_latency_browse  - 高延迟浏览场景 (跨境1080P视频)"
+    echo "  3, high_latency_browse  - 跨境高延迟常规优化 (跨境1080P视频)"
     echo ""
     echo "示例:"
     echo "  $0                      # 使用默认模式 (domestic_default)"
