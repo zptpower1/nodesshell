@@ -55,8 +55,8 @@ add_protocol() {
     "padding": false,
     "brutal": {
       "enabled": true,
-      "up_mbps": 600,
-      "down_mbps": 600
+      "up_mbps": 1000,
+      "down_mbps": 1000
     }
   }
 }
