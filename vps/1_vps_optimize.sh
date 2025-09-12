@@ -50,7 +50,7 @@ update_packages() {
 
     # 安装常用工具
     echo "安装常用工具..."
-    sudo apt install curl wget git htop unzip uuid-runtime
+    sudo apt install curl wget git htop unzip uuid-runtime vim
     sudo apt install net-tools #网络工具
     # sudo apt install iftop #查看实时网络流量
     # sudo apt install nethogs  #定位占用带宽的进程
