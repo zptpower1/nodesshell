@@ -16,6 +16,14 @@ SERVICE_NAME="sing-box"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 ENV_FILE="${SCRIPT_DIR}/.env"
 
+# 读取系统 ID（ubuntu/debian 等）
+get_os_id() {
+    if [ -r /etc/os-release ]; then
+        . /etc/os-release
+        echo "$ID"
+    fi
+}
+
 # 检查root权限
 check_root() {
     if [[ $EUID -ne 0 ]]; then
@@ -31,15 +39,29 @@ get_server_ip() {
 
 # 检查依赖
 check_dependencies() {
-    for cmd in wget curl jq; do
-        if ! command -v $cmd &> /dev/null; then
-            echo "📦 安装依赖 $cmd..."
-            apt-get update && apt-get install -y $cmd || \
-            yum install -y $cmd || \
-            apk add $cmd || \
-            pacman -S $cmd
+    local os_id=$(get_os_id)
+    local missing=()
+    # 统一检测依赖，并包含 tar（用于解压）
+    for cmd in wget curl jq tar; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing+=("$cmd")
         fi
     done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "📦 安装依赖: ${missing[*]}..."
+        if [ "$os_id" = "ubuntu" ] || [ "$os_id" = "debian" ]; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y "${missing[@]}"
+        else
+            # 其他发行版的兜底处理
+            apt-get update && apt-get install -y "${missing[@]}" || \
+            yum install -y "${missing[@]}" || \
+            apk add "${missing[@]}" || \
+            pacman -S --noconfirm "${missing[@]}"
+        fi
+    fi
 }
 
 # 加载环境变量

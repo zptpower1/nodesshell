@@ -4,9 +4,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
 # 获取最新版本
 get_latest_version() {
-    curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | \
-    jq -r .tag_name | \
-    sed 's/v//'
+    local version
+    version=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name 2>/dev/null | sed 's/^v//')
+    if [ -z "$version" ] || [ "$version" = "null" ]; then
+        version=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases | jq -r '.[0].tag_name' 2>/dev/null | sed 's/^v//')
+    fi
+    echo "$version"
 }
 
 # 下载并安装sing-box,制作自启动服务
@@ -20,11 +23,39 @@ install_sing_box() {
     esac
 
     LATEST_VERSION=$(get_latest_version)
-    wget -O /tmp/sing-box.tar.gz \
-        "https://github.com/SagerNet/sing-box/releases/download/v${LATEST_VERSION}/sing-box-${LATEST_VERSION}-linux-${ARCH}.tar.gz"
-    tar -xzf /tmp/sing-box.tar.gz -C /tmp
-    mv /tmp/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/
-    rm -rf /tmp/sing-box*
+    if [ -z "$LATEST_VERSION" ]; then
+        echo "❌ 无法获取最新版本号，请稍后重试或检查网络/GitHub API 限流。"
+        return 1
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d /tmp/singbox.XXXXXX)
+    local tar_file="$tmp_dir/sing-box.tar.gz"
+    local url="https://github.com/SagerNet/sing-box/releases/download/v${LATEST_VERSION}/sing-box-${LATEST_VERSION}-linux-${ARCH}.tar.gz"
+
+    echo "🔗 下载地址: ${url}"
+    if ! wget -O "$tar_file" "$url"; then
+        echo "❌ 下载失败: $url"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    if ! tar -xzf "$tar_file" -C "$tmp_dir"; then
+        echo "❌ 解压失败: $tar_file"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    local bin_path="$tmp_dir/sing-box-${LATEST_VERSION}-linux-${ARCH}/sing-box"
+    if [ ! -f "$bin_path" ]; then
+        echo "❌ 未找到二进制文件: $bin_path"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    mv "$bin_path" "$SING_BIN"
+    chmod +x "$SING_BIN"
+    rm -rf "$tmp_dir"
 
     # 创建系统服务
     service_install

@@ -26,6 +26,11 @@ EOF
 
 # 创建systemctl服务
 service_install() {
+    if ! command -v systemctl >/dev/null 2>&1; then
+        echo "❌ 未检测到 systemd/systemctl，无法安装系统服务。"
+        echo "请在支持 systemd 的系统上运行（Ubuntu/Debian 默认支持）。"
+        return 1
+    fi
     # 生成服务配置并写入文件
     generate_service_config > "${SERVICE_FILE}"
     
