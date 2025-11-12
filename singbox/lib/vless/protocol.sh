@@ -32,6 +32,7 @@ add_protocol() {
   "tag": "${tag_name}-$port",
   "listen": "::",
   "listen_port": ${port},
+  "tcp_fast_open": true,
   "sniff": true,
   "sniff_override_destination": true,
   "tls": {
