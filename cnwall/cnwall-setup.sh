@@ -56,7 +56,8 @@ install_yq() {
         wget -qO "$DIR/yq" https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
         chmod +x "$DIR/yq"
     fi
-    export PATH="$DIR:$PATH"
+    YQ="$DIR/yq"
+    export YQ
 }
 
 # === 创建默认配置文件（仅首次）===
@@ -111,6 +112,7 @@ main() {
     # 1. 安装依赖
     install_ipset
     install_yq
+    export YQ
     create_default_config
 
     # 2. 确保 ipset 集合存在（修复 swap 错误）

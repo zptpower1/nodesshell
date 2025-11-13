@@ -6,10 +6,11 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="$DIR/cnwall.yaml"
 NFT_TABLE="cnwall"
 LOG="$DIR/cnwall.log"
+YQ="$DIR/yq"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [APPLY] $*" | tee -a "$LOG"; }
 
-ENABLED=$(yq e '.enable_china_restriction' "$CONFIG")
+ENABLED=$("$YQ" e '.enable_china_restriction' "$CONFIG")
 [[ "$ENABLED" != "true" ]] && { log "中国限制已禁用"; exit 0; }
 
 log "应用防火墙规则..."
@@ -32,17 +33,25 @@ table inet cnwall {
 EOF
 )
 
-services=$(yq e '.services | keys | .[]' "$CONFIG")
-for svc in $services; do
-    [[ "$(yq e ".services.$svc.allow_lan" "$CONFIG")" == "true" ]] && \
+# 安全遍历 services
+services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
+while IFS= read -r svc; do
+    [[ -z "$svc" ]] && continue
+
+    # allow_lan
+    allow_lan=$("$YQ" e ".services.\"$svc\".allow_lan" "$CONFIG")
+    [[ "$allow_lan" == "true" ]] && \
         NFT_RULES+=$'\n        ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } accept'
-    ports=$(yq e ".services.$svc.ports[]" "$CONFIG")
-    for p in $ports; do
-        port=$(echo "$p" | yq e '.port' -)
-        proto=$(echo "$p" | yq e '.protocol' -)
+
+    # ports
+    ports_json=$("$YQ" e -j ".services.\"$svc\".ports" "$CONFIG" 2>/dev/null || echo '[]')
+    port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
+    for ((i=0; i<port_count; i++)); do
+        port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
+        proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
         NFT_RULES+=$'\n        ip saddr @china '"$proto"' dport '"$port"' accept'
     done
-done
+done <<< "$services"
 
 NFT_RULES+=$'\n        counter drop\n    }\n}'
 

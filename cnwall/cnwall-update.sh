@@ -9,6 +9,7 @@ IPSET_WHITE="cnwall_whitelist"
 IPSET_BLACK="cnwall_blacklist"
 APNIC_URL="https://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
 LOG="$DIR/cnwall.log"
+YQ="$DIR/yq"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [UPDATE] $*" | tee -a "$LOG"; }
 
@@ -28,13 +29,13 @@ rm "$tmp"
 
 # 白名单
 ipset flush "$IPSET_WHITE" 2>/dev/null || ipset create "$IPSET_WHITE" hash:ip
-"$DIR/yq" e '.whitelist[]' "$CONFIG" 2>/dev/null | while read ip; do
+"$YQ" e '.whitelist[]' "$CONFIG" 2>/dev/null | while read ip; do
   [[ -n "$ip" ]] && ipset add "$IPSET_WHITE" "$ip" -exist
 done || true
 
 # 黑名单
 ipset flush "$IPSET_BLACK" 2>/dev/null || ipset create "$IPSET_BLACK" hash:ip
-"$DIR/yq" e '.blacklist[]' "$CONFIG" 2>/dev/null | while read ip; do
+"$YQ" e '.blacklist[]' "$CONFIG" 2>/dev/null | while read ip; do
   [[ -n "$ip" ]] && ipset add "$IPSET_BLACK" "$ip" -exist
 done || true
 
