@@ -9,43 +9,44 @@ YQ="$DIR/yq"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [CHECK] $*" | tee -a "$LOG"; }
 
-# 精确检查 Docker 端口占用（兼容新旧 docker）
+# 检查是否外网监听（0.0.0.0 或 :::port）
+is_public_listen() {
+    local port=$1 proto=$2
+    local proto_flag=""
+    [[ "$proto" == "udp" ]] && proto_flag="-u" || proto_flag="-t"
+
+    ss -lpn $proto_flag 2>/dev/null | grep -q "0\.0\.0\.0:$port\|:::$port"
+}
+
+# 检查 Docker 外网映射
 docker_port_occupied() {
     local port=$1 proto=$2
-    local target=":$port->$port/$proto"
-    if ! command -v docker >/dev/null 2>&1; then
-        return 1
-    fi
-    docker ps --format '{{.ID}}' | while read cid; do
-        if docker inspect "$cid" -f '{{range $p, $conf := .NetworkSettings.Ports}}{{$p}}{{end}}' 2>/dev/null | grep -q "$target"; then
-            return 0
-        fi
-    done
-    return 1
+    local target="0\.0\.0\.0:$port->.*$proto"
+    docker ps --format '{{.Ports}}' 2>/dev/null | grep -Eq "$target"
 }
 
 check() {
     local port=$1 proto=$2
     local conflicts=()
 
-    # 1. 系统服务（精确匹配端口）
-    if ss -tuln | awk '{print $5}' | grep -q "^[^:]*:$port$"; then
-        conflicts+=("系统服务")
+    # 1. 系统服务（外网监听）
+    if is_public_listen "$port" "$proto"; then
+        conflicts+=("系统服务(外网)")
     fi
 
-    # 2. Docker 容器
+    # 2. Docker 容器（外网映射）
     if docker_port_occupied "$port" "$proto"; then
-        conflicts+=("Docker")
+        conflicts+=("Docker(外网映射)")
     fi
 
-    # 3. UFW
-    if command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null | grep -q " $port/$proto "; then
-        conflicts+=("UFW")
+    # 3. UFW 规则
+    if command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null | grep -q " $port/$proto .*ALLOW"; then
+        conflicts+=("UFW(已放行)")
     fi
 
-    # 4. nftables
+    # 4. nftables 已有规则
     if nft list ruleset 2>/dev/null | grep -q "dport $port.*$proto"; then
-        conflicts+=("nftables")
+        conflicts+=("nftables(已配置)")
     fi
 
     if [[ ${#conflicts[@]} -gt 0 ]]; then
@@ -60,7 +61,6 @@ check() {
 main() {
     log "端口冲突检查开始..."
 
-    # 安全读取 services
     local services
     services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || echo "")
     [[ -z "$services" ]] && { log "无服务配置，跳过检查"; return; }
@@ -69,10 +69,8 @@ main() {
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
 
-        # 读取 ports 数组（使用 -o=json 兼容新版 yq）
         local ports_json
         ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
-
         local port_count
         port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
 

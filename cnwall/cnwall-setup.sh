@@ -49,6 +49,30 @@ install_ipset() {
     log "ipset 安装并启用成功"
 }
 
+install_nftables() {
+    if command -v nft >/dev/null 2>&1; then
+        log "nftables 已安装"
+        return 0
+    fi
+
+    log "nftables 未安装，正在自动安装..."
+
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update -qq
+        apt-get install -y nftables
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y nftables
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y nftables
+    else
+        log "错误: 不支持的包管理器"
+        exit 1
+    fi
+
+    systemctl enable --now nftables 2>/dev/null || true
+    log "nftables 安装并启用成功"
+}
+
 # === 安装 yq（本地）===
 install_yq() {
     if [[ ! -f "$DIR/yq" ]]; then
@@ -111,6 +135,7 @@ main() {
 
     # 1. 安装依赖
     install_ipset
+    install_nftables
     install_yq
     export YQ
     create_default_config
