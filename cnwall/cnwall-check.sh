@@ -1,6 +1,6 @@
 #!/bin/bash
 # cnwall-check.sh
-# 专为多防火墙共存设计：检查 nftables 管理的端口是否被 iptables/UFW/Docker 管理
+# 完美兼容 UFW 无协议格式（如 "53 ALLOW"）和有协议格式（如 "80/tcp ALLOW"）
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,40 +10,42 @@ YQ="$DIR/yq"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [CHECK] $*" | tee -a "$LOG"; }
 
-# 检查 iptables / iptables-legacy 是否有规则
+# 1. iptables 直接检查（最可靠）
 iptables_has_rule() {
     local port=$1 proto=$2
     local chain=${3:-INPUT}
     local table=${4:-filter}
 
-    # 尝试 iptables-legacy
     if command -v iptables-legacy >/dev/null 2>&1; then
-        if iptables-legacy -t "$table" -S "$chain" 2>/dev/null | grep -q -- "-p $proto .* dport $port "; then
-            return 0
-        fi
+        iptables-legacy -t "$table" -S "$chain" 2>/dev/null | grep -Eq -- "-p $proto .*--dport $port( |$)"
+        return $?
     fi
-
-    # 尝试 nft 模式下的 iptables
     if command -v iptables-nft >/dev/null 2>&1; then
-        if iptables-nft -t "$table" -S "$chain" 2>/dev/null | grep -q -- "-p $proto .* dport $port "; then
-            return 0
-        fi
+        iptables-nft -t "$table" -S "$chain" 2>/dev/null | grep -Eq -- "-p $proto .*--dport $port( |$)"
+        return $?
     fi
-
     return 1
 }
 
-# 检查 UFW 是否放行该端口
+# 2. UFW 检查：兼容 "80/tcp ALLOW" 和 "53 ALLOW"
 ufw_has_allow() {
     local port=$1 proto=$2
-    ufw status verbose 2>/dev/null | grep -q " $port/$proto .*ALLOW"
+    local status
+    status=$(ufw status verbose 2>/dev/null || echo "")
+
+    # 匹配模式：
+    # - 80/tcp ALLOW IN Anywhere
+    # - 53     ALLOW IN Anywhere
+    # - 53 (v6) ALLOW IN Anywhere (v6)
+    echo "$status" | grep -Ei "(^|\s)$port(/$proto)?(\s|\().*ALLOW" >/dev/null
 }
 
-# 检查 Docker 是否通过 iptables 放行（Docker 默认用 iptables）
+# 3. Docker iptables
 docker_iptables_has_rule() {
     local port=$1 proto=$2
     iptables_has_rule "$port" "$proto" "DOCKER-USER" "filter" && return 0
     iptables_has_rule "$port" "$proto" "DOCKER" "filter" && return 0
+    iptables_has_rule "$port" "$proto" "PREROUTING" "nat" && return 0
     return 1
 }
 
@@ -51,17 +53,14 @@ check() {
     local port=$1 proto=$2
     local conflicts=()
 
-    # 1. iptables / iptables-legacy
     if iptables_has_rule "$port" "$proto"; then
         conflicts+=("iptables")
     fi
 
-    # 2. UFW（基于 iptables）
     if ufw_has_allow "$port" "$proto"; then
         conflicts+=("UFW")
     fi
 
-    # 3. Docker iptables 规则
     if docker_iptables_has_rule "$port" "$proto"; then
         conflicts+=("Docker-iptables")
     fi
@@ -76,7 +75,7 @@ check() {
 }
 
 main() {
-    log "多防火墙共存检查开始（仅检查 iptables/UFW/Docker 是否管理）..."
+    log "多防火墙共存检查开始（完美兼容 UFW 无协议格式）..."
 
     local services
     services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || echo "")
