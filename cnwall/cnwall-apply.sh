@@ -19,13 +19,13 @@ log "应用防火墙规则..."
 # 临时文件
 tmp=$(mktemp)
 
-# 1. 构造 nft 脚本（纯 nft 语法）
+# 1. 如果旧表存在则删除（避免 nft -f 在脚本里因不存在而报错）
+if nft list table inet "$NFT_TABLE" >/dev/null 2>&1; then
+    nft delete table inet "$NFT_TABLE" || true
+fi
+
+# 2. 构造 nft 脚本（纯 nft 语法）
 cat > "$tmp" <<'EOF'
-#!/usr/sbin/nft -f
-
-# 安全删除旧表（如果存在）
-delete table inet cnwall;
-
 # 创建新表
 add table inet cnwall;
 
@@ -62,19 +62,12 @@ done <<< "$services"
 # 3. 结尾
 echo "add rule inet cnwall docker_user counter drop" >> "$tmp"
 
-# 4. 执行（忽略 delete 错误）
-if ! nft -f "$tmp"; then
-    # 如果是 "table does not exist"，忽略
-    if nft -f "$tmp" 2>&1 | grep -q "No such file or directory"; then
-        log "旧表不存在elf不存在，已忽略"
-        # 重新创建
-        sed -i '/delete table/d' "$tmp"
-        nft -f "$tmp"
-    else
-        log "nft 应用失败"
-        rm "$tmp"
-        exit 1
-    fi
+# 4. 执行
+if ! output=$(nft -f "$tmp" 2>&1); then
+    echo "$output" | tee -a "$LOG" 1>/dev/null
+    log "nft 应用失败"
+    rm -f "$tmp"
+    exit 1
 fi
 
 rm "$tmp"
