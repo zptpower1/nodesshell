@@ -24,6 +24,35 @@ for script in "$UPDATE_SCRIPT" "$APPLY_SCRIPT" "$CHECK_SCRIPT"; do
     [[ -x "$script" ]] || chmod +x "$script"
 done
 
+# === 新增：自动安装 ipset ===
+install_ipset() {
+    if command -v ipset >/dev/null 2>&1; then
+        log "ipset 已安装"
+        return 0
+    fi
+
+    log "ipset 未安装，正在自动安装..."
+
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update -qq
+        apt-get install -y ipset
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y ipset
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y ipset
+    else
+        log "错误: 不支持的包管理器，无法安装 ipset"
+        exit 1
+    fi
+
+    # 启用 ipset 服务（持久化集合）
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl enable --now ipset 2>/dev/null || true
+    fi
+
+    log "ipset 安装并启用成功"
+}
+
 # 安装 yq（仅首次，放在当前目录）
 if [[ ! -f "$DIR/yq" ]]; then
     log "安装 yq 到当前目录..."
@@ -63,12 +92,6 @@ services:
     ports:
       - { port: 80, protocol: tcp }
     allow_lan: true
-
-  # 自定义服务示例
-  # proxy:
-  #   ports:
-  #     - { port: 8080, protocol: tcp }
-  #   allow_lan: false
 EOF
 fi
 
@@ -76,19 +99,22 @@ fi
 main() {
     log "=== cnwall 防火墙框架启动 ==="
 
-    # 1. 端口冲突检查
+    # 1. 安装 ipset（关键）
+    install_ipset
+
+    # 2. 端口冲突检查
     log "检查端口冲突..."
     bash "$CHECK_SCRIPT" || log "警告: 存在端口冲突，建议检查"
 
-    # 2. 更新中国 IP + 白/黑名单
+    # 3. 更新中国 IP + 白/黑名单
     log "更新中国 IP + 白/黑名单..."
     bash "$UPDATE_SCRIPT"
 
-    # 3. 应用 nftables 规则
+    # 4. 应用 nftables 规则
     log "应用防火墙规则..."
     bash "$APPLY_SCRIPT"
 
-    # 4. 设置每日自动更新（去重）
+    # 5. 设置每日自动更新（去重）
     CRON_JOB="30 3 * * * cd '$DIR' && bash '$UPDATE_SCRIPT' && bash '$APPLY_SCRIPT' >> '$LOG' 2>&1"
     if ! (crontab -l 2>/dev/null | grep -F "$CRON_JOB"); then
         log "添加每日自动更新任务..."
