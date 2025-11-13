@@ -104,17 +104,9 @@ blacklist:
 
 # 服务列表：可无限扩展
 services:
-  dns:
+  customapi:
     ports:
-      - { port: 53,  protocol: udp }
-      - { port: 53,  protocol: tcp }
-      - { port: 853, protocol: tcp }  # DoT
-      - { port: 443, protocol: tcp }  # DoH
-    allow_lan: true
-
-  web_ui:
-    ports:
-      - { port: 80, protocol: tcp }
+      - { port: 18999,  protocol: tcp }
     allow_lan: true
 EOF
     fi

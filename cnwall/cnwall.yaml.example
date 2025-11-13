@@ -20,7 +20,7 @@ services:
       - { port: 53,   protocol: udp }
       - { port: 53,   protocol: tcp }
       - { port: 853,  protocol: tcp }  # DoT
-      - { port: 443,  protocol: tcp }  # DoH
+      - { port: 443,  protocol: tcp }  # DoH，注意该端口会占用https端口
     allow_lan: true
   web_ui:
     ports:
