@@ -1,5 +1,6 @@
 #!/bin/bash
 # cnwall-check.sh
+# 专为多防火墙共存设计：检查 nftables 管理的端口是否被 iptables/UFW/Docker 管理
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,57 +10,73 @@ YQ="$DIR/yq"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [CHECK] $*" | tee -a "$LOG"; }
 
-# 检查是否外网监听（0.0.0.0 或 :::port）
-is_public_listen() {
+# 检查 iptables / iptables-legacy 是否有规则
+iptables_has_rule() {
     local port=$1 proto=$2
-    local proto_flag=""
-    [[ "$proto" == "udp" ]] && proto_flag="-u" || proto_flag="-t"
+    local chain=${3:-INPUT}
+    local table=${4:-filter}
 
-    ss -lpn $proto_flag 2>/dev/null | grep -q "0\.0\.0\.0:$port\|:::$port"
+    # 尝试 iptables-legacy
+    if command -v iptables-legacy >/dev/null 2>&1; then
+        if iptables-legacy -t "$table" -S "$chain" 2>/dev/null | grep -q -- "-p $proto .* dport $port "; then
+            return 0
+        fi
+    fi
+
+    # 尝试 nft 模式下的 iptables
+    if command -v iptables-nft >/dev/null 2>&1; then
+        if iptables-nft -t "$table" -S "$chain" 2>/dev/null | grep -q -- "-p $proto .* dport $port "; then
+            return 0
+        fi
+    fi
+
+    return 1
 }
 
-# 检查 Docker 外网映射
-docker_port_occupied() {
+# 检查 UFW 是否放行该端口
+ufw_has_allow() {
     local port=$1 proto=$2
-    local target="0\.0\.0\.0:$port->.*$proto"
-    docker ps --format '{{.Ports}}' 2>/dev/null | grep -Eq "$target"
+    ufw status verbose 2>/dev/null | grep -q " $port/$proto .*ALLOW"
+}
+
+# 检查 Docker 是否通过 iptables 放行（Docker 默认用 iptables）
+docker_iptables_has_rule() {
+    local port=$1 proto=$2
+    iptables_has_rule "$port" "$proto" "DOCKER-USER" "filter" && return 0
+    iptables_has_rule "$port" "$proto" "DOCKER" "filter" && return 0
+    return 1
 }
 
 check() {
     local port=$1 proto=$2
     local conflicts=()
 
-    # 1. 系统服务（外网监听）
-    if is_public_listen "$port" "$proto"; then
-        conflicts+=("系统服务(外网)")
+    # 1. iptables / iptables-legacy
+    if iptables_has_rule "$port" "$proto"; then
+        conflicts+=("iptables")
     fi
 
-    # 2. Docker 容器（外网映射）
-    if docker_port_occupied "$port" "$proto"; then
-        conflicts+=("Docker(外网映射)")
+    # 2. UFW（基于 iptables）
+    if ufw_has_allow "$port" "$proto"; then
+        conflicts+=("UFW")
     fi
 
-    # 3. UFW 规则
-    if command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null | grep -q " $port/$proto .*ALLOW"; then
-        conflicts+=("UFW(已放行)")
-    fi
-
-    # 4. nftables 已有规则
-    if nft list ruleset 2>/dev/null | grep -q "dport $port.*$proto"; then
-        conflicts+=("nftables(已配置)")
+    # 3. Docker iptables 规则
+    if docker_iptables_has_rule "$port" "$proto"; then
+        conflicts+=("Docker-iptables")
     fi
 
     if [[ ${#conflicts[@]} -gt 0 ]]; then
-        log "冲突 → $port/$proto: ${conflicts[*]}"
+        log "冲突 → $port/$proto 被 ${conflicts[*]} 管理（可能与 nftables 冲突）"
         return 1
     else
-        log "安全 ← $port/$proto"
+        log "安全 ← $port/$proto 未被其他工具管理"
         return 0
     fi
 }
 
 main() {
-    log "端口冲突检查开始..."
+    log "多防火墙共存检查开始（仅检查 iptables/UFW/Docker 是否管理）..."
 
     local services
     services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || echo "")
