@@ -9,12 +9,15 @@ YQ="$DIR/yq"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [CHECK] $*" | tee -a "$LOG"; }
 
-# 精确检查 Docker 端口占用
+# 精确检查 Docker 端口占用（兼容新旧 docker）
 docker_port_occupied() {
     local port=$1 proto=$2
     local target=":$port->$port/$proto"
-    docker ps --format '{{.Names}}' | while read container; do
-        if docker inspect "$container" 2>/dev/null | grep -q "\"$target\""; then
+    if ! command -v docker >/dev/null 2>&1; then
+        return 1
+    fi
+    docker ps --format '{{.ID}}' | while read cid; do
+        if docker inspect "$cid" -f '{{range $p, $conf := .NetworkSettings.Ports}}{{$p}}{{end}}' 2>/dev/null | grep -q "$target"; then
             return 0
         fi
     done
@@ -25,22 +28,22 @@ check() {
     local port=$1 proto=$2
     local conflicts=()
 
-    # 1. 系统服务
-    if ss -tuln | awk '{print $5}' | grep -q ":$port$"; then
+    # 1. 系统服务（精确匹配端口）
+    if ss -tuln | awk '{print $5}' | grep -q "^[^:]*:$port$"; then
         conflicts+=("系统服务")
     fi
 
-    # 2. Docker 容器（精确匹配）
+    # 2. Docker 容器
     if docker_port_occupied "$port" "$proto"; then
         conflicts+=("Docker")
     fi
 
     # 3. UFW
-    if ufw status verbose 2>/dev/null | grep -q " $port/$proto "; then
+    if command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null | grep -q " $port/$proto "; then
         conflicts+=("UFW")
     fi
 
-    // 4. nftables
+    # 4. nftables
     if nft list ruleset 2>/dev/null | grep -q "dport $port.*$proto"; then
         conflicts+=("nftables")
     fi
@@ -57,16 +60,18 @@ check() {
 main() {
     log "端口冲突检查开始..."
 
+    # 安全读取 services
     local services
-    services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
+    services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || echo "")
     [[ -z "$services" ]] && { log "无服务配置，跳过检查"; return; }
 
     local has_conflict=0
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
 
+        # 读取 ports 数组（使用 -o=json 兼容新版 yq）
         local ports_json
-        ports_json=$("$YQ" e -j ".services.\"$svc\".ports" "$CONFIG")
+        ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
 
         local port_count
         port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
