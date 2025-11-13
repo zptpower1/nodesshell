@@ -33,7 +33,7 @@ add set inet cnwall china { type ipv4_addr; flags interval; auto-merge; }
 add set inet cnwall whitelist { type ipv4_addr; }
 add set inet cnwall blacklist { type ipv4_addr; }
 
-add chain inet cnwall docker_user { type filter hook input priority -200; policy drop; }
+add chain inet cnwall docker_user { type filter hook input priority 100; policy drop; }
 
 # 基础规则
 add rule inet cnwall docker_user iifname "lo" accept
