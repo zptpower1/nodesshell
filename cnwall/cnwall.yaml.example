@@ -1,0 +1,37 @@
+# 限制优先级：白名单 > 中国 IP > 黑名单 > DROP
+# 是否启用中国 IP 限制
+enable_china_restriction: true
+
+# 白名单：优先放行（即使在国外）
+whitelist:
+  - "1.1.1.1"
+  - "8.8.8.8/32"
+  - "192.168.1.100"
+
+# 黑名单：强制拒绝（即使在中国）
+blacklist:
+  - "5.5.5.5"
+  - "10.0.0.0/8"  # 禁止整个网段
+
+# 服务列表：可无限扩展
+services:
+  dns:
+    ports:
+      - { port: 53,   protocol: udp }
+      - { port: 53,   protocol: tcp }
+      - { port: 853,  protocol: tcp }  # DoT
+      - { port: 443,  protocol: tcp }  # DoH
+    allow_lan: true
+  web_ui:
+    ports:
+      - { port: 80, protocol: tcp }
+    allow_lan: true
+  web_proxy:  # 你未来想限制的 8080
+    ports:
+      - { port: 8080, protocol: tcp }
+    allow_lan: true
+
+  custom_api: # 任意服务
+    ports:
+      - { port: 9000, protocol: tcp }
+    allow_lan: false

@@ -3,3 +3,4 @@ output.*
 **/.env
 **/config.json
 **/logs
+cnwall.yaml
