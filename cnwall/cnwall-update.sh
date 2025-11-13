@@ -27,14 +27,14 @@ ipset destroy "$new_set" || true
 rm "$tmp"
 
 # 白名单
-ipset create "$IPSET_WHITE" hash:ip -exist || ipset flush "$IPSET_WHITE"
-yq e '.whitelist[]' "$CONFIG" 2>/dev/null | while read ip; do
+ipset flush "$IPSET_WHITE" 2>/dev/null || ipset create "$IPSET_WHITE" hash:ip
+"$DIR/yq" e '.whitelist[]' "$CONFIG" 2>/dev/null | while read ip; do
   [[ -n "$ip" ]] && ipset add "$IPSET_WHITE" "$ip" -exist
 done || true
 
 # 黑名单
-ipset create "$IPSET_BLACK" hash:ip -exist || ipset flush "$IPSET_BLACK"
-yq e '.blacklist[]' "$CONFIG" 2>/dev/null | while read ip; do
+ipset flush "$IPSET_BLACK" 2>/dev/null || ipset create "$IPSET_BLACK" hash:ip
+"$DIR/yq" e '.blacklist[]' "$CONFIG" 2>/dev/null | while read ip; do
   [[ -n "$ip" ]] && ipset add "$IPSET_BLACK" "$ip" -exist
 done || true
 

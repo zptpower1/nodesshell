@@ -1,5 +1,5 @@
 #!/bin/bash
-# 端口管理冲突检查
+# cnwall-check.sh
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,12 +26,12 @@ check() {
 
 main() {
     log "端口冲突检查开始..."
-    services=$(yq e '.services | keys | .[]' "$CONFIG")
+    services=$("$DIR/yq" e '.services | keys | .[]' "$CONFIG")
     for svc in $services; do
-        ports=$(yq e ".services.$svc.ports[]" "$CONFIG")
+        ports=$("$DIR/yq" e ".services.$svc.ports[]" "$CONFIG")
         for p in $ports; do
-            port=$(echo "$p" | yq e '.port' -)
-            proto=$(echo "$p" | yq e '.protocol' -)
+            port=$(echo "$p" | "$DIR/yq" e '.port' -)
+            proto=$(echo "$p" | "$DIR/yq" e '.protocol' -)
             check "$port" "$proto"
         done
     done
