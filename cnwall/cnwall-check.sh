@@ -66,7 +66,7 @@ main() {
         [[ -z "$svc" ]] && continue
 
         local ports_json
-        ports_json=$("$YQ" e -j ".services.\"$svc\".ports" "$CONFIG"
+        ports_json=$("$YQ" e -j ".services.\"$svc\".ports" "$CONFIG")
 
         local port_count
         port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
