@@ -40,7 +40,7 @@ fi
 
 for setname in china whitelist blacklist; do
   if [[ "$use_json" == yes ]]; then
-    elems=$("$YQ" e '.nftables[] | select(has("set")) | .set | select(.name=="'"$setname"'") | (.elements // []) | length' - <<< "$json_dump" 2>/dev/null | tail -n1)
+    elems=$("$YQ" e '.nftables[] | select(has("set")) | .set | select(.name=="'"$setname"'") | (.elem // []) | length' - <<< "$json_dump" 2>/dev/null | tail -n1)
     if [[ -z "$elems" ]]; then
       log "缺少集合 $setname"
     else
@@ -70,7 +70,7 @@ if command -v ipset >/dev/null 2>&1; then
   log "ipset 统计: china=${cc:-0} whitelist=${cw:-0} blacklist=${cb:-0}"
   for setname in china whitelist blacklist; do
     if [[ "$use_json" == yes ]]; then
-      nft_count=$("$YQ" e '.nftables[] | select(has("set")) | .set | select(.name=="'"$setname"'") | (.elements // []) | length' - <<< "$json_dump" 2>/dev/null | tail -n1)
+      nft_count=$("$YQ" e '.nftables[] | select(has("set")) | .set | select(.name=="'"$setname"'") | (.elem // []) | length' - <<< "$json_dump" 2>/dev/null | tail -n1)
       [[ -z "$nft_count" ]] && nft_count=0
     else
       set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
