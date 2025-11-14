@@ -62,8 +62,8 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
       for ((i=0; i<port_count; i++)); do
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-        has_china=$(echo "$chain_dump" | grep -q "ip saddr @china $proto dport $port" && echo yes || echo no)
-        has_lan=$(echo "$chain_dump" | grep -q "\{ 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 \} $proto dport $port" && echo yes || echo no)
+        has_china=$(echo "$chain_dump" | grep -Eq "ip saddr @china .*${proto} dport ${port} .*accept" && echo yes || echo no)
+        has_lan=$(echo "$chain_dump" | grep -Eq "ip saddr \{ .*192\\.168\\.0\\.0/16.*10\\.0\\.0\\.0/8.*172\\.16\\.0\\.0/12.* \} .*${proto} dport ${port} .*accept" && echo yes || echo no)
         log "服务 $svc 端口 $port/$proto: china规则=$has_china lan规则=$has_lan"
       done
     done <<< "$services"
@@ -75,15 +75,15 @@ else
 fi
 
 # 检查多余规则（不在预期集合内的规则）
-mapfile -t rules < <(echo "$chain_dump" | sed -n '/{/,/}/p' | sed '1d;$d' | grep -v -E 'type .* hook|policy ' | sed 's/^\s*//')
+mapfile -t rules < <(echo "$chain_dump" | awk 'NR>1 && $0 != "}" {gsub(/^[[:space:]]+/, "", $0); print}' | grep -v -E '^(type .* hook|policy )')
 
 allowed_re=(
-  '^iifname "lo" accept$'
-  '^ct state established,related accept$'
-  '^ip saddr @whitelist accept$'
-  '^ip saddr @blacklist (counter )?drop$'
-  '^counter accept$'
-  '^tcp dport 22 accept$'
+  '^iifname "lo" .*accept$'
+  '^ct state established,related .*accept$'
+  '^ip saddr @whitelist .*accept$'
+  '^ip saddr @blacklist .*drop$'
+  '^counter .*accept$'
+  '^tcp dport 22 .*accept$'
 )
 
 extra_count=0
@@ -97,8 +97,8 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
     for ((i=0; i<port_count; i++)); do
       port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
       proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-      allowed_re+=("^ip saddr @china $proto dport $port accept$")
-      allowed_re+=("^ip saddr \{ 192\.168\.0\.0/16, 10\.0\.0\.0/8, 172\.16\.0\.0/12 \} $proto dport $port accept$")
+      allowed_re+=("^ip saddr @china .*${proto} dport ${port} .*accept$")
+      allowed_re+=("^ip saddr \{ .*192\\.168\\.0\\.0/16.*10\\.0\\.0\\.0/8.*172\\.16\\.0\\.0/12.* \} .*${proto} dport ${port} .*accept$")
     done
   done <<< "$services"
 fi
