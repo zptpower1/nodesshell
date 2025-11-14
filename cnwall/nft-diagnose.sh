@@ -63,7 +63,16 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
         has_china=$(echo "$chain_dump" | grep -Eq "ip saddr @china .*${proto} dport ${port} .*accept" && echo yes || echo no)
-        has_lan=$(echo "$chain_dump" | grep -Eq "ip saddr \{ .*192\\.168\\.0\\.0/16.*10\\.0\\.0\\.0/8.*172\\.16\\.0\\.0/12.* \} .*${proto} dport ${port} .*accept" && echo yes || echo no)
+        has_lan=no
+        for rl in "${rules[@]}"; do
+          echo "$rl" | grep -Eq "${proto} dport ${port}" || continue
+          echo "$rl" | grep -q "ip saddr {" || continue
+          echo "$rl" | grep -q "192.168.0.0/16" || continue
+          echo "$rl" | grep -q "10.0.0.0/8" || continue
+          echo "$rl" | grep -q "172.16.0.0/12" || continue
+          echo "$rl" | grep -q "accept" || continue
+          has_lan=yes; break
+        done
         log "服务 $svc 端口 $port/$proto: china规则=$has_china lan规则=$has_lan"
       done
     done <<< "$services"
@@ -98,7 +107,7 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
       port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
       proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
       allowed_re+=("^ip saddr @china .*${proto} dport ${port} .*accept$")
-      allowed_re+=("^ip saddr \{ .*192\\.168\\.0\\.0/16.*10\\.0\\.0\\.0/8.*172\\.16\\.0\\.0/12.* \} .*${proto} dport ${port} .*accept$")
+      # LAN 放行规则通过逐行匹配三段网段来识别，不加入固定顺序的正则
     done
   done <<< "$services"
 fi
