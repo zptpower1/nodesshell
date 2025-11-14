@@ -45,7 +45,7 @@ add set inet cnwall china { type ipv4_addr; flags interval; auto-merge; }
 add set inet cnwall whitelist { type ipv4_addr; }
 add set inet cnwall blacklist { type ipv4_addr; }
 
-add chain inet cnwall docker_prerouting { type filter hook prerouting priority -300; policy accept; }
+add chain inet cnwall docker_prerouting { type filter hook prerouting priority -100; policy accept; }
 
 # 基础规则（prerouting）
 add rule inet cnwall docker_prerouting ip saddr @whitelist accept
@@ -98,12 +98,72 @@ done <<< "$services"
 # 3. 结尾（默认策略为 accept，无需额外 drop）
 echo "add rule inet cnwall docker_prerouting counter accept" >> "$tmp"
 
-# 4. 执行
+# 4. 执行（失败时回退到无日志/限速版本，兼容老内核）
 if ! output=$(nft -f "$tmp" 2>&1); then
     echo "$output" | tee -a "$LOG" 1>/dev/null
-    log "nft 应用失败"
-    rm -f "$tmp"
-    exit 1
+    echo "------ 失败的 nft 脚本 ------" >> "$LOG"
+    sed -n '1,200p' "$tmp" >> "$LOG"
+    echo "------ 结束 ------" >> "$LOG"
+    log "尝试使用兼容版本（移除 log/limit/auto-merge）..."
+
+    # 兼容版本
+    tmp2=$(mktemp)
+    cat > "$tmp2" <<'EOF'
+# 创建新表（兼容版）
+add table ip cnwall;
+
+add set ip cnwall china { type ipv4_addr; flags interval; }
+add set ip cnwall whitelist { type ipv4_addr; }
+add set ip cnwall blacklist { type ipv4_addr; }
+
+add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
+
+# 基础规则（prerouting）
+add rule ip cnwall docker_prerouting ip saddr @whitelist accept
+add rule ip cnwall docker_prerouting ip saddr @blacklist drop
+EOF
+
+    if command -v ipset >/dev/null 2>&1; then
+        while IFS= read -r entry; do
+            [[ -n "$entry" ]] && echo "add element ip cnwall china { $entry }" >> "$tmp2"
+        done <<< "$china_entries"
+        while IFS= read -r entry; do
+            [[ -n "$entry" ]] && echo "add element ip cnwall whitelist { $entry }" >> "$tmp2"
+        done <<< "$white_entries"
+        while IFS= read -r entry; do
+            [[ -n "$entry" ]] && echo "add element ip cnwall blacklist { $entry }" >> "$tmp2"
+        done <<< "$black_entries"
+    fi
+
+    services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
+    while IFS= read -r svc; do
+        [[ -z "$svc" ]] && continue
+        allow_lan=$("$YQ" e ".services.\"$svc\".allow_lan" "$CONFIG")
+        ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
+        port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
+        for ((i=0; i<port_count; i++)); do
+            port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
+            proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
+            echo "add rule ip cnwall docker_prerouting ip saddr @china $proto dport $port accept" >> "$tmp2"
+            if [[ "$allow_lan" == "true" ]]; then
+                echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port accept" >> "$tmp2"
+            fi
+            echo "add rule ip cnwall docker_prerouting $proto dport $port drop" >> "$tmp2"
+        done
+    done <<< "$services"
+
+    echo "add rule ip cnwall docker_prerouting counter accept" >> "$tmp2"
+
+    if ! output2=$(nft -f "$tmp2" 2>&1); then
+        echo "$output2" | tee -a "$LOG" 1>/dev/null
+        echo "------ 兼容版失败脚本 ------" >> "$LOG"
+        sed -n '1,200p' "$tmp2" >> "$LOG"
+        echo "------ 结束 ------" >> "$LOG"
+        log "nft 应用失败"
+        rm -f "$tmp" "$tmp2"
+        exit 1
+    fi
+    rm -f "$tmp2"
 fi
 
 rm "$tmp"
