@@ -44,6 +44,16 @@ if command -v ipset >/dev/null 2>&1; then
   cw=$(ipset list "$IPSET_WHITE" 2>/dev/null | sed -n 's/^Number of entries: \([0-9]\+\)$/\1/p' | head -1)
   cb=$(ipset list "$IPSET_BLACK" 2>/dev/null | sed -n 's/^Number of entries: \([0-9]\+\)$/\1/p' | head -1)
   log "ipset 统计: china=${cc:-0} whitelist=${cw:-0} blacklist=${cb:-0}"
+  for setname in china whitelist blacklist; do
+    nft_count=$(nft list set inet "$TABLE" "$setname" 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+    ipset_count_var="cc"
+    [[ "$setname" == "whitelist" ]] && ipset_count_var="cw"
+    [[ "$setname" == "blacklist" ]] && ipset_count_var="cb"
+    ipset_count=$(eval echo "\${$ipset_count_var}")
+    if [[ "${ipset_count:-0}" -gt 0 && "${nft_count:-0}" -eq 0 ]]; then
+      log "警告: 集合 $setname 未同步（ipset>0, nft=0）"
+    fi
+  done
 fi
 
 if echo "$chain_dump" | grep -q 'ct state established,related'; then

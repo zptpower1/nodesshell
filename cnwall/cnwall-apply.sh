@@ -56,19 +56,23 @@ EOF
 
 if command -v ipset >/dev/null 2>&1; then
     china_entries=$(ipset save "$IPSET_CHINA" 2>/dev/null | awk '$1=="add"{print $3}')
+    china_count=$(printf '%s\n' "$china_entries" | grep -c . || true)
     while IFS= read -r entry; do
         [[ -n "$entry" ]] && echo "add element inet cnwall china { $entry }" >> "$tmp"
     done <<< "$china_entries"
 
     white_entries=$(ipset save "$IPSET_WHITE" 2>/dev/null | awk '$1=="add"{print $3}')
+    white_count=$(printf '%s\n' "$white_entries" | grep -c . || true)
     while IFS= read -r entry; do
         [[ -n "$entry" ]] && echo "add element inet cnwall whitelist { $entry }" >> "$tmp"
     done <<< "$white_entries"
 
     black_entries=$(ipset save "$IPSET_BLACK" 2>/dev/null | awk '$1=="add"{print $3}')
+    black_count=$(printf '%s\n' "$black_entries" | grep -c . || true)
     while IFS= read -r entry; do
         [[ -n "$entry" ]] && echo "add element inet cnwall blacklist { $entry }" >> "$tmp"
     done <<< "$black_entries"
+    log "同步 ipset: china=${china_count:-0} whitelist=${white_count:-0} blacklist=${black_count:-0}"
 else
     log "未检测到 ipset，nft 集合为空"
 fi
@@ -104,4 +108,8 @@ if ! output=$(nft -f "$tmp" 2>&1); then
 fi
 
 rm "$tmp"
+china_nft_count=$(nft list set inet cnwall china 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+white_nft_count=$(nft list set inet cnwall whitelist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+black_nft_count=$(nft list set inet cnwall blacklist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+log "nft 集合: china=${china_nft_count:-0} whitelist=${white_nft_count:-0} blacklist=${black_nft_count:-0}"
 log "规则应用成功"
