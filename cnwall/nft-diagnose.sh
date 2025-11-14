@@ -26,10 +26,14 @@ log "链策略: ${policy_line:-未知}"
 chain_dump=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null || echo "")
 mapfile -t rules < <(echo "$chain_dump" | awk '{gsub(/^[[:space:]]+/, "", $0); if(NR==1) next; if($0 ~ /^}$/) next; if($0 ~ /^chain /) next; if($0 ~ /^type .* hook/) next; if($0 ~ /^policy /) next; print}')
 
+table_dump=$(nft list table inet "$TABLE" 2>/dev/null || echo "")
 for setname in china whitelist blacklist; do
-  if nft list set inet "$TABLE" "$setname" >/dev/null 2>&1; then
-    if nft list set inet "$TABLE" "$setname" | grep -q 'elements'; then
-      elems=$(nft list set inet "$TABLE" "$setname" | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+  set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
+  if echo "$set_block" | grep -q "set $setname {"; then
+    if echo "$set_block" | grep -q "elements"; then
+      joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
+      inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
+      elems=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
       log "集合 $setname: $elems 条目"
     else
       log "集合 $setname: 空"
@@ -45,7 +49,10 @@ if command -v ipset >/dev/null 2>&1; then
   cb=$(ipset list "$IPSET_BLACK" 2>/dev/null | sed -n 's/^Number of entries: \([0-9]\+\)$/\1/p' | head -1)
   log "ipset 统计: china=${cc:-0} whitelist=${cw:-0} blacklist=${cb:-0}"
   for setname in china whitelist blacklist; do
-    nft_count=$(nft list set inet "$TABLE" "$setname" 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+    set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
+    joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
+    inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
+    nft_count=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
     ipset_count_var="cc"
     [[ "$setname" == "whitelist" ]] && ipset_count_var="cw"
     [[ "$setname" == "blacklist" ]] && ipset_count_var="cb"
