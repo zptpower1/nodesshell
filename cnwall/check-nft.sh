@@ -1,8 +1,6 @@
 #!/bin/bash
 # 文件名: check-nft.sh
-# 用法:
-#   sudo ./check-nft.sh 53     # 查询端口 53
-#   sudo ./check-nft.sh        # 查看 Docker 表
+# 用法: sudo ./check-nft.sh 53   或   sudo ./check-nft.sh
 
 set -euo pipefail
 
@@ -15,7 +13,7 @@ print_header() {
     echo -e "${YELLOW}=== $1 ===${NC}"
 }
 
-# 修复：支持任意空格、端口集、注释中的端口
+# 修复：安全遍历表名
 search_port() {
     local port="$1"
     local found=0
@@ -23,16 +21,21 @@ search_port() {
     print_header "查询端口 $port 规则（所有表）"
 
     for family in ip ip6 inet bridge arp; do
-        tables=$(nft -a list tables $family 2>/dev/null | awk '{print $2}' | sort -u || true)
-        for table in $tables; do
-            # 提取整表内容
-            rules=$(nft list table $family $table 2>/dev/null || continue)
+        # 安全获取表名（每行一个）
+        mapfile -t tables < <(nft -a list tables "$family" 2>/dev/null | awk '{print $2}' | sort -u)
 
-            # 匹配：dport/sport 前后任意空格、端口集、注释
-            if echo "$rules" | grep -Eq "(dport|sport)[[:space:]]+[^[:space:]]*$port[^[:space:]]|(dport|sport)[[:space:]]*\{[^}]*\b$port\b[^}]*\}|comment.*\b$port\b"; then
+        for table in "${tables[@]}"; do  # ← 加引号，安全！
+            # 跳过空表名
+            [[ -z "$table" ]] && continue
+
+            # 获取规则内容
+            rules=$(nft list table "$family" "$table" 2>/dev/null || continue)
+
+            # 正则：支持 dport 53, dport {53,80}, comment "dns53"
+            if echo "$rules" | grep -Eq "(dport|sport)[[:space:]]+$port\b|\b(dport|sport)[[:space:]]*\{[^}]*\b$port\b[^}]*\}|comment.*\b$port\b"; then
                 echo -e "${GREEN}表 $family $table${NC} 包含端口 $port："
                 echo "$rules" | \
-                    grep -E --color=always "(dport|sport)[[:space:]]+[^[:space:]]*$port[^[:space:]]|(dport|sport)[[:space:]]*\{[^}]*\b$port\b[^}]*\}|comment.*\b$port\b" | \
+                    grep -E --color=always "(dport|sport)[[:space:]]+$port\b|\b(dport|sport)[[:space:]]*\{[^}]*\b$port\b[^}]*\}|comment.*\b$port\b" | \
                     nl | sed 's/^/    /'
                 found=1
             fi
@@ -46,11 +49,12 @@ show_docker_tables() {
     print_header "Docker 相关 nftables 表"
     local found=0
     for family in ip ip6 inet nat filter; do
-        tables=$(nft list tables $family 2>/dev/null | awk '{print $2}' | sort -u || true)
-        for table in $tables; do
-            if echo "$table" | grep -qiE "docker|nat-.*docker"; then
+        mapfile -t tables < <(nft list tables "$family" 2>/dev/null | awk '{print $2}' | sort -u)
+        for table in "${tables[@]}"; do
+            [[ -z "$table" ]] && continue
+            if echo "$table" | grep -qiE "docker|nat.*docker"; then
                 echo -e "${GREEN}表 $family $table${NC}："
-                nft list table $family $table | sed 's/^/    /'
+                nft list table "$family" "$table" | sed 's/^/    /'
                 found=1
                 echo
             fi
