@@ -15,21 +15,21 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [NFTCHECK] $*" | tee -a "$LOG"; }
 
 command -v nft >/dev/null 2>&1 || { log "未检测到 nft"; exit 1; }
 
-if ! nft list table inet "$TABLE" >/dev/null 2>&1; then
+if ! nft list table ip "$TABLE" >/dev/null 2>&1; then
   log "未检测到表 $TABLE"
   exit 0
 fi
 
-policy_line=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null | grep -m1 'policy' || true)
+policy_line=$(nft list chain ip "$TABLE" "$CHAIN" 2>/dev/null | grep -m1 'policy' || true)
 log "链策略: ${policy_line:-未知}"
 
-chain_dump=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null || echo "")
+chain_dump=$(nft list chain ip "$TABLE" "$CHAIN" 2>/dev/null || echo "")
 mapfile -t rules < <(echo "$chain_dump" | awk '{gsub(/^[[:space:]]+/, "", $0); if(NR==1) next; if($0 ~ /^}$/) next; if($0 ~ /^chain /) next; if($0 ~ /^type .* hook/) next; if($0 ~ /^policy /) next; print}')
 
-table_dump=$(nft list table inet "$TABLE" 2>/dev/null || echo "")
+table_dump=$(nft list table ip "$TABLE" 2>/dev/null || echo "")
 
 # 优先使用 JSON 解析集合元素数量（更可靠）；无法使用时回退到文本解析
-json_dump=$(nft -j list table inet "$TABLE" 2>/dev/null || echo "")
+json_dump=$(nft -j list table ip "$TABLE" 2>/dev/null || echo "")
 use_json=no
 if [[ -n "$json_dump" ]]; then
   if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
@@ -112,7 +112,8 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
           echo "$rl" | grep -q "accept" || continue
           has_lan=yes; break
         done
-        log "服务 $svc 端口 $port/$proto: china规则=$has_china lan规则=$has_lan"
+        has_drop=$(printf '%s\n' "${rules[@]}" | grep -Eq ".*${proto} dport ${port} .*drop$" && echo yes || echo no)
+        log "服务 $svc 端口 $port/$proto: 中国放行=$has_china 非中国拒绝=$has_drop LAN放行=$has_lan"
       done
     done <<< "$services"
   else
@@ -138,12 +139,13 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
     [[ -z "$svc" ]] && continue
     ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
     port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
-    for ((i=0; i<port_count; i++)); do
-      port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
-      proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-      allowed_re+=("^ip saddr @china .*${proto} dport ${port} .*accept$")
-      # LAN 放行规则通过逐行匹配三段网段来识别，不加入固定顺序的正则
-    done
+      for ((i=0; i<port_count; i++)); do
+        port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
+        proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
+        allowed_re+=("^ip saddr @china .*${proto} dport ${port} .*accept$")
+        allowed_re+=("^.*${proto} dport ${port} .*drop$")
+        # LAN 放行规则通过逐行匹配三段网段来识别，不加入固定顺序的正则
+      done
   done <<< "$services"
 fi
 

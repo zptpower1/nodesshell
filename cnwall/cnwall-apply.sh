@@ -32,43 +32,43 @@ log "应用防火墙规则..."
 tmp=$(mktemp)
 
 # 1. 如果旧表存在则删除（避免 nft -f 在脚本里因不存在而报错）
-if nft list table inet "$NFT_TABLE" >/dev/null 2>&1; then
-    nft delete table inet "$NFT_TABLE" || true
+if nft list table ip "$NFT_TABLE" >/dev/null 2>&1; then
+    nft delete table ip "$NFT_TABLE" || true
 fi
 
 # 2. 构造 nft 脚本（纯 nft 语法）
 cat > "$tmp" <<'EOF'
-# 创建新表
-add table inet cnwall;
+# 创建新表（主版本）
+add table ip cnwall;
 
-add set inet cnwall china { type ipv4_addr; flags interval; auto-merge; }
-add set inet cnwall whitelist { type ipv4_addr; }
-add set inet cnwall blacklist { type ipv4_addr; }
+add set ip cnwall china { type ipv4_addr; flags interval; }
+add set ip cnwall whitelist { type ipv4_addr; }
+add set ip cnwall blacklist { type ipv4_addr; }
 
-add chain inet cnwall docker_prerouting { type filter hook prerouting priority -100; policy accept; }
+add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
 
 # 基础规则（prerouting）
-add rule inet cnwall docker_prerouting ip saddr @whitelist accept
-add rule inet cnwall docker_prerouting ip saddr @blacklist limit rate 20/second log prefix "cnwall: drop blacklist (pre) " level warning counter drop
+add rule ip cnwall docker_prerouting ip saddr @whitelist accept
+add rule ip cnwall docker_prerouting ip saddr @blacklist limit rate 20/second log prefix "cnwall: drop blacklist (pre) " level warning counter drop
 EOF
 
 if command -v ipset >/dev/null 2>&1; then
     china_entries=$(ipset save "$IPSET_CHINA" 2>/dev/null | awk '$1=="add"{print $3}')
     china_count=$(printf '%s\n' "$china_entries" | grep -c . || true)
     while IFS= read -r entry; do
-        [[ -n "$entry" ]] && echo "add element inet cnwall china { $entry }" >> "$tmp"
+        [[ -n "$entry" ]] && echo "add element ip cnwall china { $entry }" >> "$tmp"
     done <<< "$china_entries"
 
     white_entries=$(ipset save "$IPSET_WHITE" 2>/dev/null | awk '$1=="add"{print $3}')
     white_count=$(printf '%s\n' "$white_entries" | grep -c . || true)
     while IFS= read -r entry; do
-        [[ -n "$entry" ]] && echo "add element inet cnwall whitelist { $entry }" >> "$tmp"
+        [[ -n "$entry" ]] && echo "add element ip cnwall whitelist { $entry }" >> "$tmp"
     done <<< "$white_entries"
 
     black_entries=$(ipset save "$IPSET_BLACK" 2>/dev/null | awk '$1=="add"{print $3}')
     black_count=$(printf '%s\n' "$black_entries" | grep -c . || true)
     while IFS= read -r entry; do
-        [[ -n "$entry" ]] && echo "add element inet cnwall blacklist { $entry }" >> "$tmp"
+        [[ -n "$entry" ]] && echo "add element ip cnwall blacklist { $entry }" >> "$tmp"
     done <<< "$black_entries"
     log "同步 ipset: china=${china_count:-0} whitelist=${white_count:-0} blacklist=${black_count:-0}"
 else
@@ -87,16 +87,16 @@ while IFS= read -r svc; do
     for ((i=0; i<port_count; i++)); do
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-        echo "add rule inet cnwall docker_prerouting ip saddr @china $proto dport $port limit rate 20/second log prefix \"cnwall: allow CN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
+        echo "add rule ip cnwall docker_prerouting ip saddr @china $proto dport $port limit rate 20/second log prefix \"cnwall: allow CN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
         if [[ "$allow_lan" == "true" ]]; then
-            echo "add rule inet cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
+            echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
         fi
-        echo "add rule inet cnwall docker_prerouting $proto dport $port limit rate 10/second log prefix \"cnwall: drop non-match $svc $proto $port (pre) \" level warning counter drop" >> "$tmp"
+        echo "add rule ip cnwall docker_prerouting $proto dport $port limit rate 10/second log prefix \"cnwall: drop non-match $svc $proto $port (pre) \" level warning counter drop" >> "$tmp"
     done
 done <<< "$services"
 
 # 3. 结尾（默认策略为 accept，无需额外 drop）
-echo "add rule inet cnwall docker_prerouting counter accept" >> "$tmp"
+echo "add rule ip cnwall docker_prerouting counter accept" >> "$tmp"
 
 # 4. 执行（失败时回退到无日志/限速版本，兼容老内核）
 if ! output=$(nft -f "$tmp" 2>&1); then
@@ -167,8 +167,8 @@ EOF
 fi
 
 rm "$tmp"
-china_nft_count=$(nft list set inet cnwall china 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
-white_nft_count=$(nft list set inet cnwall whitelist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
-black_nft_count=$(nft list set inet cnwall blacklist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+china_nft_count=$(nft list set ip cnwall china 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+white_nft_count=$(nft list set ip cnwall whitelist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
+black_nft_count=$(nft list set ip cnwall blacklist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
 log "nft 集合: china=${china_nft_count:-0} whitelist=${white_nft_count:-0} blacklist=${black_nft_count:-0}"
 log "规则应用成功"
