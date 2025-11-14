@@ -116,7 +116,7 @@ add set ip cnwall china { type ipv4_addr; flags interval; }
 add set ip cnwall whitelist { type ipv4_addr; }
 add set ip cnwall blacklist { type ipv4_addr; }
 
-add chain ip cnwall docker_prerouting { type filter hook prerouting priority 0; policy accept; }
+add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
 
 # 基础规则（prerouting）
 add rule ip cnwall docker_prerouting ip saddr @whitelist accept

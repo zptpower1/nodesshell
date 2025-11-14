@@ -1,4 +1,6 @@
 #!/bin/bash
+# 用于开启/关闭docker自动控制iptables做端口映射
+# docker安装完成后默认是开启状态
 set -euo pipefail
 
 CMD=${1:-status}
