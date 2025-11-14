@@ -45,12 +45,11 @@ add set inet cnwall china { type ipv4_addr; flags interval; auto-merge; }
 add set inet cnwall whitelist { type ipv4_addr; }
 add set inet cnwall blacklist { type ipv4_addr; }
 
-add chain inet cnwall docker_user { type filter hook input priority 100; policy drop; }
+add chain inet cnwall docker_user { type filter hook input priority 100; policy accept; }
 
 # 基础规则
 add rule inet cnwall docker_user iifname "lo" accept
 add rule inet cnwall docker_user ct state established,related accept
-add rule inet cnwall docker_user tcp dport 22 accept
 add rule inet cnwall docker_user ip saddr @whitelist accept
 add rule inet cnwall docker_user ip saddr @blacklist counter drop
 EOF
@@ -93,8 +92,8 @@ while IFS= read -r svc; do
     done
 done <<< "$services"
 
-# 3. 结尾
-echo "add rule inet cnwall docker_user counter drop" >> "$tmp"
+# 3. 结尾（默认策略为 accept，无需额外 drop）
+echo "add rule inet cnwall docker_user counter accept" >> "$tmp"
 
 # 4. 执行
 if ! output=$(nft -f "$tmp" 2>&1); then
