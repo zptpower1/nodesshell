@@ -27,19 +27,39 @@ chain_dump=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null || echo "")
 mapfile -t rules < <(echo "$chain_dump" | awk '{gsub(/^[[:space:]]+/, "", $0); if(NR==1) next; if($0 ~ /^}$/) next; if($0 ~ /^chain /) next; if($0 ~ /^type .* hook/) next; if($0 ~ /^policy /) next; print}')
 
 table_dump=$(nft list table inet "$TABLE" 2>/dev/null || echo "")
+
+# 优先使用 JSON 解析集合元素数量（更可靠）；无法使用时回退到文本解析
+json_dump=$(nft -j list table inet "$TABLE" 2>/dev/null || echo "")
+use_json=no
+if [[ -n "$json_dump" ]]; then
+  if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
+    [[ -x "$YQ" ]] || YQ="$(command -v yq)"
+    use_json=yes
+  fi
+fi
+
 for setname in china whitelist blacklist; do
-  set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
-  if echo "$set_block" | grep -q "set $setname {"; then
-    if echo "$set_block" | grep -q "elements"; then
-      joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
-      inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
-      elems=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
-      log "集合 $setname: $elems 条目"
+  if [[ "$use_json" == yes ]]; then
+    elems=$("$YQ" e '.nftables[] | select(has("set")) | .set | select(.name=="'"$setname"'") | (.elements // []) | length' - <<< "$json_dump" 2>/dev/null | tail -n1)
+    if [[ -z "$elems" ]]; then
+      log "缺少集合 $setname"
     else
-      log "集合 $setname: 空"
+      log "集合 $setname: $elems 条目"
     fi
   else
-    log "缺少集合 $setname"
+    set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
+    if echo "$set_block" | grep -q "set $setname {"; then
+      if echo "$set_block" | grep -q "elements"; then
+        joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
+        inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
+        elems=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
+        log "集合 $setname: $elems 条目"
+      else
+        log "集合 $setname: 空"
+      fi
+    else
+      log "缺少集合 $setname"
+    fi
   fi
 done
 
@@ -49,10 +69,15 @@ if command -v ipset >/dev/null 2>&1; then
   cb=$(ipset list "$IPSET_BLACK" 2>/dev/null | sed -n 's/^Number of entries: \([0-9]\+\)$/\1/p' | head -1)
   log "ipset 统计: china=${cc:-0} whitelist=${cw:-0} blacklist=${cb:-0}"
   for setname in china whitelist blacklist; do
-    set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
-    joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
-    inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
-    nft_count=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
+    if [[ "$use_json" == yes ]]; then
+      nft_count=$("$YQ" e '.nftables[] | select(has("set")) | .set | select(.name=="'"$setname"'") | (.elements // []) | length' - <<< "$json_dump" 2>/dev/null | tail -n1)
+      [[ -z "$nft_count" ]] && nft_count=0
+    else
+      set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
+      joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
+      inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
+      nft_count=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
+    fi
     ipset_count_var="cc"
     [[ "$setname" == "whitelist" ]] && ipset_count_var="cw"
     [[ "$setname" == "blacklist" ]] && ipset_count_var="cb"
