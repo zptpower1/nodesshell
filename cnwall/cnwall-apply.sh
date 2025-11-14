@@ -8,8 +8,20 @@ CONFIG="$DIR/cnwall.yaml"
 NFT_TABLE="cnwall"
 LOG="$DIR/cnwall.log"
 YQ="$DIR/yq"
+IPSET_CHINA="cnwall_china"
+IPSET_WHITE="cnwall_whitelist"
+IPSET_BLACK="cnwall_blacklist"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [APPLY] $*" | tee -a "$LOG"; }
+
+if [[ ! -x "$YQ" ]]; then
+    if command -v yq >/dev/null 2>&1; then
+        YQ="$(command -v yq)"
+    else
+        log "错误: 未找到 yq，请先运行 setup 安装或手动提供"
+        exit 1
+    fi
+fi
 
 ENABLED=$("$YQ" e '.enable_china_restriction' "$CONFIG")
 [[ "$ENABLED" != "true" ]] && { log "中国限制已禁用"; exit 0; }
@@ -37,9 +49,30 @@ add chain inet cnwall docker_user { type filter hook input priority 100; policy 
 
 # 基础规则
 add rule inet cnwall docker_user iifname "lo" accept
+add rule inet cnwall docker_user ct state established,related accept
+add rule inet cnwall docker_user tcp dport 22 accept
 add rule inet cnwall docker_user ip saddr @whitelist accept
 add rule inet cnwall docker_user ip saddr @blacklist counter drop
 EOF
+
+if command -v ipset >/dev/null 2>&1; then
+    china_entries=$(ipset save "$IPSET_CHINA" 2>/dev/null | awk '$1=="add"{print $3}')
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && echo "add element inet cnwall china { $entry }" >> "$tmp"
+    done <<< "$china_entries"
+
+    white_entries=$(ipset save "$IPSET_WHITE" 2>/dev/null | awk '$1=="add"{print $3}')
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && echo "add element inet cnwall whitelist { $entry }" >> "$tmp"
+    done <<< "$white_entries"
+
+    black_entries=$(ipset save "$IPSET_BLACK" 2>/dev/null | awk '$1=="add"{print $3}')
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && echo "add element inet cnwall blacklist { $entry }" >> "$tmp"
+    done <<< "$black_entries"
+else
+    log "未检测到 ipset，nft 集合为空"
+fi
 
 # 2. 动态添加服务规则
 services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
@@ -47,8 +80,6 @@ while IFS= read -r svc; do
     [[ -z "$svc" ]] && continue
 
     allow_lan=$("$YQ" e ".services.\"$svc\".allow_lan" "$CONFIG")
-    [[ "$allow_lan" == "true" ]] && \
-        echo "add rule inet cnwall docker_user ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } accept" >> "$tmp"
 
     ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
     port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
@@ -56,6 +87,9 @@ while IFS= read -r svc; do
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
         echo "add rule inet cnwall docker_user ip saddr @china $proto dport $port accept" >> "$tmp"
+        if [[ "$allow_lan" == "true" ]]; then
+            echo "add rule inet cnwall docker_user ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port accept" >> "$tmp"
+        fi
     done
 done <<< "$services"
 

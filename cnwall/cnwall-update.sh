@@ -17,11 +17,20 @@ log "更新中国 IP + 白/黑名单..."
 
 # 中国 IP
 tmp="/tmp/cnwall_china_$$.txt"
-wget -qO- "$APNIC_URL" | grep 'apnic|CN|ipv4|' | \
-  awk -F'|' '{printf "%s/%d\n", $4, 32-log($5)/log(2)}' > "$tmp"
+if command -v wget >/dev/null 2>&1; then
+  wget -qO- "$APNIC_URL" | grep 'apnic|CN|ipv4|' | \
+    awk -F'|' '{printf "%s/%d\n", $4, 32-log($5)/log(2)}' > "$tmp"
+elif command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$APNIC_URL" | grep 'apnic|CN|ipv4|' | \
+    awk -F'|' '{printf "%s/%d\n", $4, 32-log($5)/log(2)}' > "$tmp"
+else
+  log "错误: 缺少 wget/curl，无法下载 APNIC 列表"
+  exit 1
+fi
 
 new_set="${IPSET_CHINA}_new"
-ipset create "$new_set" hash:net -exist || ipset flush "$new_set"
+ipset create "$new_set" hash:net -exist
+ipset flush "$new_set" 2>/dev/null || true
 while read cidr; do ipset add "$new_set" "$cidr" -exist; done < "$tmp"
 ipset swap "$new_set" "$IPSET_CHINA" || true
 ipset destroy "$new_set" || true

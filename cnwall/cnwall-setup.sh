@@ -104,9 +104,12 @@ blacklist:
 
 # 服务列表：可无限扩展
 services:
-  customapi:
+  ssh:
     ports:
-      - { port: 18999,  protocol: tcp }
+      - { port: 22,  protocol: tcp }
+      - { port: 22,  protocol: udp }
+      - { port: 9122,  protocol: tcp }
+      - { port: 9122,  protocol: udp }
     allow_lan: true
 EOF
     fi
@@ -114,10 +117,10 @@ EOF
 
 # === 确保 ipset 主集合存在（关键修复）===
 ensure_ipset_exists() {
-    local name="$1"
+    local name="$1" type="${2:-hash:net}"
     if ! ipset list "$name" >/dev/null 2>&1; then
-        log "创建 ipset 集合: $name"
-        ipset create "$name" hash:net 2>/dev/null || true
+        log "创建 ipset 集合: $name ($type)"
+        ipset create "$name" "$type" 2>/dev/null || true
     fi
 }
 
@@ -133,9 +136,9 @@ main() {
     create_default_config
 
     # 2. 确保 ipset 集合存在（修复 swap 错误）
-    ensure_ipset_exists "cnwall_china"
-    ensure_ipset_exists "cnwall_whitelist"
-    ensure_ipset_exists "cnwall_blacklist"
+    ensure_ipset_exists "cnwall_china" hash:net
+    ensure_ipset_exists "cnwall_whitelist" hash:ip
+    ensure_ipset_exists "cnwall_blacklist" hash:ip
 
     # 3. 端口冲突检查
     log "检查端口冲突..."
@@ -153,13 +156,17 @@ main() {
     log "应用防火墙规则..."
     bash "$APPLY_SCRIPT"
 
-    # 6. 设置每日自动更新
-    CRON_JOB="30 3 * * * cd '$DIR' && bash '$UPDATE_SCRIPT' && bash '$APPLY_SCRIPT' >> '$LOG' 2>&1"
-    if ! (crontab -l 2>/dev/null | grep -F "$CRON_JOB"); then
-        log "添加每日自动更新任务..."
-        (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+    # 6. 设置每日自动更新（若 crontab 不存在则跳过）
+    if command -v crontab >/dev/null 2>&1; then
+        CRON_JOB="30 3 * * * cd '$DIR' && bash '$UPDATE_SCRIPT' && bash '$APPLY_SCRIPT' >> '$LOG' 2>&1"
+        if ! (crontab -l 2>/dev/null | grep -F "$CRON_JOB"); then
+            log "添加每日自动更新任务..."
+            (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+        else
+            log "cron 任务已存在"
+        fi
     else
-        log "cron 任务已存在"
+        log "未检测到 crontab，跳过自动更新计划任务"
     fi
 
     log "=== 安装完成 ==="
