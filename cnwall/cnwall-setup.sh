@@ -84,6 +84,78 @@ install_yq() {
     export YQ
 }
 
+install_cron() {
+    if command -v crontab >/dev/null 2>&1; then
+        log "crontab 已可用"
+        return 0
+    fi
+    log "未检测到 crontab，尝试安装..."
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update -qq
+        apt-get install -y cron
+        systemctl enable --now cron 2>/dev/null || true
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y cronie
+        systemctl enable --now crond 2>/dev/null || true
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y cronie
+        systemctl enable --now crond 2>/dev/null || true
+    else
+        log "无法安装 crontab（无包管理器），将使用 systemd 定时器"
+        return 1
+    fi
+    command -v crontab >/dev/null 2>&1 && return 0 || return 1
+}
+
+setup_auto_update() {
+    CRON_JOB="30 3 * * * cd '$DIR' && bash '$UPDATE_SCRIPT' && bash '$APPLY_SCRIPT' >> '$LOG' 2>&1"
+    if command -v crontab >/dev/null 2>&1; then
+        if ! (crontab -l 2>/dev/null | grep -F "$CRON_JOB"); then
+            log "添加每日自动更新任务..."
+            (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+        else
+            log "cron 任务已存在"
+        fi
+        return
+    fi
+    if command -v systemctl >/dev/null 2>&1; then
+        SERVICE_FILE="/etc/systemd/system/cnwall-update.service"
+        TIMER_FILE="/etc/systemd/system/cnwall-update.timer"
+        if [[ ! -f "$SERVICE_FILE" ]]; then
+            log "创建 systemd service: cnwall-update.service"
+            cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=cnwall update and apply
+
+[Service]
+Type=oneshot
+WorkingDirectory=$DIR
+ExecStart=/bin/bash $UPDATE_SCRIPT
+ExecStart=/bin/bash $APPLY_SCRIPT
+EOF
+        fi
+        if [[ ! -f "$TIMER_FILE" ]]; then
+            log "创建 systemd timer: cnwall-update.timer"
+            cat > "$TIMER_FILE" <<EOF
+[Unit]
+Description=Daily cnwall update
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+        fi
+        systemctl daemon-reload
+        systemctl enable --now cnwall-update.timer 2>/dev/null || true
+        log "systemd 定时器已启用"
+    else
+        log "未检测到 systemctl，无法配置自动更新"
+    fi
+}
+
 # === 创建默认配置文件（仅首次）===
 create_default_config() {
     if [[ ! -f "$CONFIG" ]]; then
@@ -134,6 +206,7 @@ main() {
     install_yq
     export YQ
     create_default_config
+    install_cron || true
 
     # 2. 确保 ipset 集合存在（修复 swap 错误）
     ensure_ipset_exists "cnwall_china" hash:net
@@ -156,18 +229,7 @@ main() {
     log "应用防火墙规则..."
     bash "$APPLY_SCRIPT"
 
-    # 6. 设置每日自动更新（若 crontab 不存在则跳过）
-    if command -v crontab >/dev/null 2>&1; then
-        CRON_JOB="30 3 * * * cd '$DIR' && bash '$UPDATE_SCRIPT' && bash '$APPLY_SCRIPT' >> '$LOG' 2>&1"
-        if ! (crontab -l 2>/dev/null | grep -F "$CRON_JOB"); then
-            log "添加每日自动更新任务..."
-            (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
-        else
-            log "cron 任务已存在"
-        fi
-    else
-        log "未检测到 crontab，跳过自动更新计划任务"
-    fi
+    setup_auto_update
 
     log "=== 安装完成 ==="
     log "配置文件: $CONFIG"
