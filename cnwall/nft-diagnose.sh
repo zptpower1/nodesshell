@@ -5,7 +5,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="$DIR/cnwall.yaml"
 LOG="$DIR/cnwall.log"
 TABLE="cnwall"
-CHAIN="docker_user"
+CHAIN="docker_prerouting"
 YQ="$DIR/yq"
 IPSET_CHINA="cnwall_china"
 IPSET_WHITE="cnwall_whitelist"
@@ -88,11 +88,7 @@ if command -v ipset >/dev/null 2>&1; then
   done
 fi
 
-if echo "$chain_dump" | grep -q 'ct state established,related'; then
-  log "基础规则: established,related 存在"
-else
-  log "基础规则: established,related 缺失"
-fi
+# prerouting 链不检查 established 规则
 
 if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
   [[ -x "$YQ" ]] || YQ="$(command -v yq)"
@@ -129,12 +125,9 @@ fi
 # 检查多余规则（不在预期集合内的规则）
 
 allowed_re=(
-  '^iifname "lo" .*accept$'
-  '^ct state established,related .*accept$'
   '^ip saddr @whitelist .*accept$'
   '^ip saddr @blacklist .*drop$'
   '^counter .*accept$'
-  '^tcp dport 22 .*accept$'
 )
 
 extra_count=0

@@ -45,13 +45,11 @@ add set inet cnwall china { type ipv4_addr; flags interval; auto-merge; }
 add set inet cnwall whitelist { type ipv4_addr; }
 add set inet cnwall blacklist { type ipv4_addr; }
 
-add chain inet cnwall docker_user { type filter hook input priority 100; policy accept; }
+add chain inet cnwall docker_prerouting { type filter hook prerouting priority -300; policy accept; }
 
-# 基础规则
-add rule inet cnwall docker_user iifname "lo" accept
-add rule inet cnwall docker_user ct state established,related accept
-add rule inet cnwall docker_user ip saddr @whitelist accept
-add rule inet cnwall docker_user ip saddr @blacklist counter drop
+# 基础规则（prerouting）
+add rule inet cnwall docker_prerouting ip saddr @whitelist accept
+add rule inet cnwall docker_prerouting ip saddr @blacklist limit rate 20/second log prefix "cnwall: drop blacklist (pre) " level warning counter drop
 EOF
 
 if command -v ipset >/dev/null 2>&1; then
@@ -89,15 +87,16 @@ while IFS= read -r svc; do
     for ((i=0; i<port_count; i++)); do
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-        echo "add rule inet cnwall docker_user ip saddr @china $proto dport $port accept" >> "$tmp"
+        echo "add rule inet cnwall docker_prerouting ip saddr @china $proto dport $port limit rate 20/second log prefix \"cnwall: allow CN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
         if [[ "$allow_lan" == "true" ]]; then
-            echo "add rule inet cnwall docker_user ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port accept" >> "$tmp"
+            echo "add rule inet cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
         fi
+        echo "add rule inet cnwall docker_prerouting $proto dport $port limit rate 10/second log prefix \"cnwall: drop non-match $svc $proto $port (pre) \" level warning counter drop" >> "$tmp"
     done
 done <<< "$services"
 
 # 3. 结尾（默认策略为 accept，无需额外 drop）
-echo "add rule inet cnwall docker_user counter accept" >> "$tmp"
+echo "add rule inet cnwall docker_prerouting counter accept" >> "$tmp"
 
 # 4. 执行
 if ! output=$(nft -f "$tmp" 2>&1); then
