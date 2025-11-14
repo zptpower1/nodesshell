@@ -24,7 +24,7 @@ policy_line=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null | grep -m1 'poli
 log "链策略: ${policy_line:-未知}"
 
 chain_dump=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null || echo "")
-mapfile -t rules < <(echo "$chain_dump" | awk 'NR>1 && $0 != "}" {gsub(/^[[:space:]]+/, "", $0); print}' | grep -v -E '^(type .* hook|policy )')
+mapfile -t rules < <(echo "$chain_dump" | awk '{gsub(/^[[:space:]]+/, "", $0); if(NR==1) next; if($0 ~ /^}$/) next; if($0 ~ /^chain /) next; if($0 ~ /^type .* hook/) next; if($0 ~ /^policy /) next; print}')
 
 for setname in china whitelist blacklist; do
   if nft list set inet "$TABLE" "$setname" >/dev/null 2>&1; then
