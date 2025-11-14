@@ -24,6 +24,7 @@ policy_line=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null | grep -m1 'poli
 log "链策略: ${policy_line:-未知}"
 
 chain_dump=$(nft list chain inet "$TABLE" "$CHAIN" 2>/dev/null || echo "")
+mapfile -t rules < <(echo "$chain_dump" | awk 'NR>1 && $0 != "}" {gsub(/^[[:space:]]+/, "", $0); print}' | grep -v -E '^(type .* hook|policy )')
 
 for setname in china whitelist blacklist; do
   if nft list set inet "$TABLE" "$setname" >/dev/null 2>&1; then
@@ -62,7 +63,7 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
       for ((i=0; i<port_count; i++)); do
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-        has_china=$(echo "$chain_dump" | grep -Eq "ip saddr @china .*${proto} dport ${port} .*accept" && echo yes || echo no)
+        has_china=$(printf '%s\n' "${rules[@]}" | grep -Eq "ip saddr @china .*${proto} dport ${port} .*accept" && echo yes || echo no)
         has_lan=no
         for rl in "${rules[@]}"; do
           echo "$rl" | grep -Eq "${proto} dport ${port}" || continue
@@ -84,7 +85,6 @@ else
 fi
 
 # 检查多余规则（不在预期集合内的规则）
-mapfile -t rules < <(echo "$chain_dump" | awk 'NR>1 && $0 != "}" {gsub(/^[[:space:]]+/, "", $0); print}' | grep -v -E '^(type .* hook|policy )')
 
 allowed_re=(
   '^iifname "lo" .*accept$'
@@ -120,6 +120,29 @@ for r in "${rules[@]}"; do
       break
     fi
   done
+  if [[ "$ok" == no ]]; then
+    # 允许 LAN 放行规则（不固定网段顺序），按服务端口/协议识别
+    if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
+      [[ -x "$YQ" ]] || YQ="$(command -v yq)"
+      services=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || echo "")
+      while IFS= read -r svc; do
+        [[ -z "$svc" ]] && continue
+        ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
+        port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
+        for ((i=0; i<port_count; i++)); do
+          port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
+          proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
+          echo "$r" | grep -Eq "${proto} dport ${port}" || continue
+          echo "$r" | grep -q "ip saddr {" || continue
+          echo "$r" | grep -q "192.168.0.0/16" || continue
+          echo "$r" | grep -q "10.0.0.0/8" || continue
+          echo "$r" | grep -q "172.16.0.0/12" || continue
+          echo "$r" | grep -q "accept" || continue
+          ok=yes; break 2
+        done
+      done <<< "$services"
+    fi
+  fi
   if [[ "$ok" == no ]]; then
     log "多余规则: $r"
     extra_count=$((extra_count+1))
