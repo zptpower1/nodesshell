@@ -1,23 +1,21 @@
 #!/bin/bash
 # 文件名: check-nft.sh
 # 用法:
-#   1. 查询具体端口:   sudo ./check-nft.sh 5244
-#   2. 查看 Docker 相关表: sudo ./check-nft.sh
+#   sudo ./check-nft.sh 53     # 查询端口 53
+#   sudo ./check-nft.sh        # 查看 Docker 表
 
 set -euo pipefail
 
-# 颜色定义
 RED='\033[31m'
 GREEN='\033[32m'
 YELLOW='\033[33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# 函数：打印标题
 print_header() {
     echo -e "${YELLOW}=== $1 ===${NC}"
 }
 
-# 函数：搜索端口规则（dport/sport）
+# 修复：支持任意空格、端口集、注释中的端口
 search_port() {
     local port="$1"
     local found=0
@@ -27,13 +25,14 @@ search_port() {
     for family in ip ip6 inet bridge arp; do
         tables=$(nft -a list tables $family 2>/dev/null | awk '{print $2}' | sort -u || true)
         for table in $tables; do
-            if nft list table $family $table 2>/dev/null | \
-               grep -E "(dport|sport)[[:space:]]*$port|dport[[:space:]]*{[^}]*$port|sport[[:space:]]*{[^}]*$port" | \
-               grep -v "Warning:.*iptables-nft" > /dev/null; then
+            # 提取整表内容
+            rules=$(nft list table $family $table 2>/dev/null || continue)
 
+            # 匹配：dport/sport 前后任意空格、端口集、注释
+            if echo "$rules" | grep -Eq "(dport|sport)[[:space:]]+[^[:space:]]*$port[^[:space:]]|(dport|sport)[[:space:]]*\{[^}]*\b$port\b[^}]*\}|comment.*\b$port\b"; then
                 echo -e "${GREEN}表 $family $table${NC} 包含端口 $port："
-                nft list table $family $table | \
-                    grep -E "(dport|sport)[[:space:]]*$port|dport[[:space:]]*{[^}]*$port|sport[[:space:]]*{[^}]*$port" | \
+                echo "$rules" | \
+                    grep -E --color=always "(dport|sport)[[:space:]]+[^[:space:]]*$port[^[:space:]]|(dport|sport)[[:space:]]*\{[^}]*\b$port\b[^}]*\}|comment.*\b$port\b" | \
                     nl | sed 's/^/    /'
                 found=1
             fi
@@ -43,18 +42,13 @@ search_port() {
     [ $found -eq 0 ] && echo -e "${RED}未在任何表中找到端口 $port 规则${NC}"
 }
 
-# 函数：显示 Docker 相关表
 show_docker_tables() {
-    print_header "Docker 相关 nftables 表（含链和规则）"
-
-    local docker_tables=("DOCKER" "DOCKER-USER" "DOCKER-ISOLATION" "docker")
+    print_header "Docker 相关 nftables 表"
     local found=0
-
     for family in ip ip6 inet nat filter; do
         tables=$(nft list tables $family 2>/dev/null | awk '{print $2}' | sort -u || true)
         for table in $tables; do
-            if [[ " ${docker_tables[@]} " =~ " $table " ]] || \
-               echo "$table" | grep -qiE "docker|nat-.*docker"; then
+            if echo "$table" | grep -qiE "docker|nat-.*docker"; then
                 echo -e "${GREEN}表 $family $table${NC}："
                 nft list table $family $table | sed 's/^/    /'
                 found=1
@@ -62,8 +56,7 @@ show_docker_tables() {
             fi
         done
     done
-
-    [ $found -eq 0 ] && echo -e "${RED}未检测到任何 Docker 相关表（说明已成功关闭 --iptables=false）${NC}"
+    [ $found -eq 0 ] && echo -e "${RED}未检测到 Docker 相关表${NC}"
 }
 
 # 主逻辑
@@ -73,7 +66,7 @@ elif [ $# -eq 0 ]; then
     show_docker_tables
 else
     echo "用法:"
-    echo "  sudo $0 <端口号>    # 查询指定端口在所有表中的规则"
-    echo "  sudo $0             # 显示 Docker 相关 nftables 表"
+    echo "  sudo $0 <端口>    # 查询端口"
+    echo "  sudo $0           # 查看 Docker 表"
     exit 1
 fi
