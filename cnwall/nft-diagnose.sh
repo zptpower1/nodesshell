@@ -50,9 +50,9 @@ for setname in china whitelist blacklist; do
     set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
     if echo "$set_block" | grep -q "set $setname {"; then
       if echo "$set_block" | grep -q "elements"; then
-        joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
-        inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
-        elems=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
+        joined=$(echo "$set_block" | sed -n '/elements/,$p' | tr -d '\n')
+        inner=$(echo "$joined" | sed -E 's/.*elements[[:space:]]*=\{([^}]*)\}.*/\1/')
+        elems=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0 || $0 ~ /^[[:space:]]*$/) print 0; else print NF }')
         log "集合 $setname: $elems 条目"
       else
         log "集合 $setname: 空"
@@ -74,9 +74,9 @@ if command -v ipset >/dev/null 2>&1; then
       [[ -z "$nft_count" ]] && nft_count=0
     else
       set_block=$(echo "$table_dump" | awk "/set $setname \{/,/\}/")
-      joined=$(echo "$set_block" | sed -n '/elements/,$p' | sed '1d' | tr -d '\n')
-      inner=$(echo "$joined" | sed -E 's/^.*elements[[:space:]]*=\{([^}]*)\}.*$/\1/')
-      nft_count=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0) print 0; else print NF }')
+      joined=$(echo "$set_block" | sed -n '/elements/,$p' | tr -d '\n')
+      inner=$(echo "$joined" | sed -E 's/.*elements[[:space:]]*=\{([^}]*)\}.*/\1/')
+      nft_count=$(echo "$inner" | tr -d ' ' | awk -F',' '{ if (length($0)==0 || $0 ~ /^[[:space:]]*$/) print 0; else print NF }')
     fi
     ipset_count_var="cc"
     [[ "$setname" == "whitelist" ]] && ipset_count_var="cw"
