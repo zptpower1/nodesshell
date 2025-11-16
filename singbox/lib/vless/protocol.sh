@@ -37,11 +37,11 @@ add_protocol() {
   "sniff_override_destination": true,
   "tls": {
         "enabled": true,
-        "server_name": "www.cloudflare.com",
+        "server_name": "mensura.cdn-apple.com",
         "reality": {
           "enabled": true,
           "handshake": {
-            "server": "www.cloudflare.com",
+            "server": "mensura.cdn-apple.com",
             "server_port": 443
           },
           "private_key": "${private_key}",
