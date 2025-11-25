@@ -343,12 +343,17 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
     if nft list chain "$DOCKER_FAMILY_POST" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN_POST"; then
         log "DOCKER-USER 已挂载 cnwall 钩子"
     else
-        if nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER index 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>/dev/null; then
+        if output_ins_idx=$(nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER index 0 comment "cnwall hook" jump "$CNWALL_DOCKER_CHAIN_POST" 2>&1); then
             log "已插入 DOCKER-USER 跳转(index 0)"
-        elif nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>/dev/null; then
+        elif output_ins_pos=$(nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 comment "cnwall hook" jump "$CNWALL_DOCKER_CHAIN_POST" 2>&1); then
             log "已插入 DOCKER-USER 跳转(position 0)"
+        elif output_add=$(nft add rule "$DOCKER_FAMILY_POST" filter DOCKER-USER comment "cnwall hook" jump "$CNWALL_DOCKER_CHAIN_POST" 2>&1); then
+            log "已追加 DOCKER-USER 跳转(末尾)"
         else
             log "插入 DOCKER-USER 跳转失败"
+            echo "$output_ins_idx" >> "$LOG" 2>/dev/null || true
+            echo "$output_ins_pos" >> "$LOG" 2>/dev/null || true
+            echo "$output_add" >> "$LOG" 2>/dev/null || true
         fi
     fi
 fi
