@@ -45,13 +45,13 @@ add set ip cnwall china { type ipv4_addr; flags interval; }
 add set ip cnwall whitelist { type ipv4_addr; }
 add set ip cnwall blacklist { type ipv4_addr; }
 
-add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
+add chain ip cnwall host_input { type filter hook input priority 0; policy accept; }
 
-# 基础规则（prerouting）
-add rule ip cnwall docker_prerouting iifname "lo" accept
-add rule ip cnwall docker_prerouting ip saddr 127.0.0.1 accept
-add rule ip cnwall docker_prerouting ip saddr @whitelist accept
-add rule ip cnwall docker_prerouting ip saddr @blacklist limit rate 20/second log prefix "cnwall: drop blacklist (pre) " level warning counter drop
+# 基础规则（input）
+add rule ip cnwall host_input iifname "lo" accept
+add rule ip cnwall host_input ip saddr 127.0.0.1 accept
+add rule ip cnwall host_input ip saddr @whitelist accept
+add rule ip cnwall host_input ip saddr @blacklist limit rate 20/second log prefix "cnwall: drop blacklist (input) " level warning counter drop
 EOF
 
 if command -v ipset >/dev/null 2>&1; then
@@ -89,16 +89,83 @@ while IFS= read -r svc; do
     for ((i=0; i<port_count; i++)); do
         port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-        echo "add rule ip cnwall docker_prerouting ip saddr @china $proto dport $port limit rate 20/second log prefix \"cnwall: allow CN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
+        echo "add rule ip cnwall host_input ip saddr @china $proto dport $port limit rate 20/second log prefix \"cnwall: allow CN $svc $proto $port (input) \" level info counter accept" >> "$tmp"
         if [[ "$allow_lan" == "true" ]]; then
-            echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
+            echo "add rule ip cnwall host_input ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (input) \" level info counter accept" >> "$tmp"
         fi
-        echo "add rule ip cnwall docker_prerouting $proto dport $port limit rate 10/second log prefix \"cnwall: drop non-match $svc $proto $port (pre) \" level warning counter drop" >> "$tmp"
+        echo "add rule ip cnwall host_input ip saddr 100.64.0.0/10 $proto dport $port limit rate 20/second log prefix \"cnwall: allow TS $svc $proto $port (input) \" level info counter accept" >> "$tmp"
+        echo "add rule ip cnwall host_input $proto dport $port limit rate 10/second log prefix \"cnwall: drop non-match $svc $proto $port (input) \" level warning counter drop" >> "$tmp"
     done
 done <<< "$services"
 
 # 3. 结尾（默认策略为 accept，无需额外 drop）
-echo "add rule ip cnwall docker_prerouting counter accept" >> "$tmp"
+echo "add rule ip cnwall host_input counter accept" >> "$tmp"
+
+# 通过 DOCKER-USER 链增强与 UFW-Docker 的端口拦截兼容
+DOCKER_FAMILY=""
+if nft list chain inet filter DOCKER-USER >/dev/null 2>&1; then
+    DOCKER_FAMILY="inet"
+elif nft list chain ip filter DOCKER-USER >/dev/null 2>&1; then
+    DOCKER_FAMILY="ip"
+fi
+
+if [[ -n "$DOCKER_FAMILY" ]]; then
+    if nft list set "$DOCKER_FAMILY" filter china >/dev/null 2>&1; then
+        echo "flush set $DOCKER_FAMILY filter china" >> "$tmp"
+    else
+        echo "add set $DOCKER_FAMILY filter china { type ipv4_addr; flags interval; }" >> "$tmp"
+    fi
+    if nft list set "$DOCKER_FAMILY" filter whitelist >/dev/null 2>&1; then
+        echo "flush set $DOCKER_FAMILY filter whitelist" >> "$tmp"
+    else
+        echo "add set $DOCKER_FAMILY filter whitelist { type ipv4_addr; }" >> "$tmp"
+    fi
+    if nft list set "$DOCKER_FAMILY" filter blacklist >/dev/null 2>&1; then
+        echo "flush set $DOCKER_FAMILY filter blacklist" >> "$tmp"
+    else
+        echo "add set $DOCKER_FAMILY filter blacklist { type ipv4_addr; }" >> "$tmp"
+    fi
+
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter china { $entry }" >> "$tmp"
+    done <<< "$china_entries"
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter whitelist { $entry }" >> "$tmp"
+    done <<< "$white_entries"
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter blacklist { $entry }" >> "$tmp"
+    done <<< "$black_entries"
+
+    CNWALL_DOCKER_CHAIN="cnwall_docker_user"
+    if nft list chain "$DOCKER_FAMILY" filter "$CNWALL_DOCKER_CHAIN" >/dev/null 2>&1; then
+        echo "flush chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp"
+    else
+        echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp"
+    fi
+    if ! nft list chain "$DOCKER_FAMILY" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN"; then
+        echo "insert rule $DOCKER_FAMILY filter DOCKER-USER position 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp"
+    fi
+    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @whitelist comment \"cnwall\" accept" >> "$tmp"
+    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @blacklist comment \"cnwall\" drop" >> "$tmp"
+
+    services_docker=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
+    while IFS= read -r svc; do
+        [[ -z "$svc" ]] && continue
+        allow_lan=$("$YQ" e ".services.\"$svc\".allow_lan" "$CONFIG")
+        ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
+        port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
+        for ((i=0; i<port_count; i++)); do
+            port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
+            proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @china $proto dport $port comment \"cnwall\" accept" >> "$tmp"
+            if [[ "$allow_lan" == "true" ]]; then
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port comment \"cnwall\" accept" >> "$tmp"
+            fi
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr 100.64.0.0/10 $proto dport $port comment \"cnwall\" accept" >> "$tmp"
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN $proto dport $port comment \"cnwall\" drop" >> "$tmp"
+        done
+    done <<< "$services_docker"
+fi
 
 # 4. 执行（失败时回退到无日志/限速版本，兼容老内核）
 if ! output=$(nft -f "$tmp" 2>&1); then
@@ -118,13 +185,13 @@ add set ip cnwall china { type ipv4_addr; flags interval; }
 add set ip cnwall whitelist { type ipv4_addr; }
 add set ip cnwall blacklist { type ipv4_addr; }
 
-add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
+add chain ip cnwall host_input { type filter hook input priority 0; policy accept; }
 
-# 基础规则（prerouting）
-add rule ip cnwall docker_prerouting iifname "lo" accept
-add rule ip cnwall docker_prerouting ip saddr 127.0.0.1 accept
-add rule ip cnwall docker_prerouting ip saddr @whitelist accept
-add rule ip cnwall docker_prerouting ip saddr @blacklist drop
+# 基础规则（input）
+add rule ip cnwall host_input iifname "lo" accept
+add rule ip cnwall host_input ip saddr 127.0.0.1 accept
+add rule ip cnwall host_input ip saddr @whitelist accept
+add rule ip cnwall host_input ip saddr @blacklist drop
 EOF
 
     if command -v ipset >/dev/null 2>&1; then
@@ -148,15 +215,81 @@ EOF
         for ((i=0; i<port_count; i++)); do
             port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
             proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-            echo "add rule ip cnwall docker_prerouting ip saddr @china $proto dport $port accept" >> "$tmp2"
+            echo "add rule ip cnwall host_input ip saddr @china $proto dport $port accept" >> "$tmp2"
             if [[ "$allow_lan" == "true" ]]; then
-                echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10 } $proto dport $port accept" >> "$tmp2"
+                echo "add rule ip cnwall host_input ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10 } $proto dport $port accept" >> "$tmp2"
             fi
-            echo "add rule ip cnwall docker_prerouting $proto dport $port drop" >> "$tmp2"
+            echo "add rule ip cnwall host_input ip saddr 100.64.0.0/10 $proto dport $port accept" >> "$tmp2"
+            echo "add rule ip cnwall host_input $proto dport $port drop" >> "$tmp2"
         done
     done <<< "$services"
 
-    echo "add rule ip cnwall docker_prerouting counter accept" >> "$tmp2"
+    DOCKER_FAMILY=""
+    if nft list chain inet filter DOCKER-USER >/dev/null 2>&1; then
+        DOCKER_FAMILY="inet"
+    elif nft list chain ip filter DOCKER-USER >/dev/null 2>&1; then
+        DOCKER_FAMILY="ip"
+    fi
+
+    if [[ -n "$DOCKER_FAMILY" ]]; then
+        if nft list set "$DOCKER_FAMILY" filter china >/dev/null 2>&1; then
+            echo "flush set $DOCKER_FAMILY filter china" >> "$tmp2"
+        else
+            echo "add set $DOCKER_FAMILY filter china { type ipv4_addr; flags interval; }" >> "$tmp2"
+        fi
+        if nft list set "$DOCKER_FAMILY" filter whitelist >/dev/null 2>&1; then
+            echo "flush set $DOCKER_FAMILY filter whitelist" >> "$tmp2"
+        else
+            echo "add set $DOCKER_FAMILY filter whitelist { type ipv4_addr; }" >> "$tmp2"
+        fi
+        if nft list set "$DOCKER_FAMILY" filter blacklist >/dev/null 2>&1; then
+            echo "flush set $DOCKER_FAMILY filter blacklist" >> "$tmp2"
+        else
+            echo "add set $DOCKER_FAMILY filter blacklist { type ipv4_addr; }" >> "$tmp2"
+        fi
+
+        while IFS= read -r entry; do
+            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter china { $entry }" >> "$tmp2"
+        done <<< "$china_entries"
+        while IFS= read -r entry; do
+            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter whitelist { $entry }" >> "$tmp2"
+        done <<< "$white_entries"
+        while IFS= read -r entry; do
+            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter blacklist { $entry }" >> "$tmp2"
+        done <<< "$black_entries"
+
+        CNWALL_DOCKER_CHAIN="cnwall_docker_user"
+        if nft list chain "$DOCKER_FAMILY" filter "$CNWALL_DOCKER_CHAIN" >/dev/null 2>&1; then
+            echo "flush chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp2"
+        else
+            echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp2"
+        fi
+        if ! nft list chain "$DOCKER_FAMILY" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN"; then
+            echo "insert rule $DOCKER_FAMILY filter DOCKER-USER position 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp2"
+        fi
+        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @whitelist comment \"cnwall\" accept" >> "$tmp2"
+        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @blacklist comment \"cnwall\" drop" >> "$tmp2"
+
+        services_docker=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
+        while IFS= read -r svc; do
+            [[ -z "$svc" ]] && continue
+            allow_lan=$("$YQ" e ".services.\"$svc\".allow_lan" "$CONFIG")
+            ports_json=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
+            port_count=$(echo "$ports_json" | "$YQ" e 'length' -)
+            for ((i=0; i<port_count; i++)); do
+                port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
+                proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
+                echo "add rule $DOCKER_FAMILY filter DOCKER-USER ip saddr @china $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
+                if [[ "$allow_lan" == "true" ]]; then
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
+                fi
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr 100.64.0.0/10 $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN $proto dport $port comment \"cnwall\" drop" >> "$tmp2"
+            done
+        done <<< "$services_docker"
+    fi
+
+    echo "add rule ip cnwall host_input counter accept" >> "$tmp2"
 
     if ! output2=$(nft -f "$tmp2" 2>&1); then
         echo "$output2" | tee -a "$LOG" 1>/dev/null
