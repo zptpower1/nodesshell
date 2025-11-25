@@ -110,6 +110,9 @@ elif nft list chain ip filter DOCKER-USER >/dev/null 2>&1; then
 fi
 
 if [[ -n "$DOCKER_FAMILY" ]]; then
+    if ! nft list table "$DOCKER_FAMILY" filter >/dev/null 2>&1; then
+        echo "add table $DOCKER_FAMILY filter;" >> "$tmp"
+    fi
     if nft list set "$DOCKER_FAMILY" filter cnwall_china >/dev/null 2>&1; then
         echo "flush set $DOCKER_FAMILY filter cnwall_china" >> "$tmp"
     else
@@ -232,6 +235,9 @@ EOF
     fi
 
     if [[ -n "$DOCKER_FAMILY" ]]; then
+        if ! nft list table "$DOCKER_FAMILY" filter >/dev/null 2>&1; then
+            echo "add table $DOCKER_FAMILY filter;" >> "$tmp2"
+        fi
         if nft list set "$DOCKER_FAMILY" filter cnwall_china >/dev/null 2>&1; then
             echo "flush set $DOCKER_FAMILY filter cnwall_china" >> "$tmp2"
         else
