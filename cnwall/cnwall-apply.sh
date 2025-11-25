@@ -110,30 +110,30 @@ elif nft list chain ip filter DOCKER-USER >/dev/null 2>&1; then
 fi
 
 if [[ -n "$DOCKER_FAMILY" ]]; then
-    if nft list set "$DOCKER_FAMILY" filter china >/dev/null 2>&1; then
-        echo "flush set $DOCKER_FAMILY filter china" >> "$tmp"
+    if nft list set "$DOCKER_FAMILY" filter cnwall_china >/dev/null 2>&1; then
+        echo "flush set $DOCKER_FAMILY filter cnwall_china" >> "$tmp"
     else
-        echo "add set $DOCKER_FAMILY filter china { type ipv4_addr; flags interval; }" >> "$tmp"
+        echo "add set $DOCKER_FAMILY filter cnwall_china { type ipv4_addr; flags interval; }" >> "$tmp"
     fi
-    if nft list set "$DOCKER_FAMILY" filter whitelist >/dev/null 2>&1; then
-        echo "flush set $DOCKER_FAMILY filter whitelist" >> "$tmp"
+    if nft list set "$DOCKER_FAMILY" filter cnwall_whitelist >/dev/null 2>&1; then
+        echo "flush set $DOCKER_FAMILY filter cnwall_whitelist" >> "$tmp"
     else
-        echo "add set $DOCKER_FAMILY filter whitelist { type ipv4_addr; }" >> "$tmp"
+        echo "add set $DOCKER_FAMILY filter cnwall_whitelist { type ipv4_addr; }" >> "$tmp"
     fi
-    if nft list set "$DOCKER_FAMILY" filter blacklist >/dev/null 2>&1; then
-        echo "flush set $DOCKER_FAMILY filter blacklist" >> "$tmp"
+    if nft list set "$DOCKER_FAMILY" filter cnwall_blacklist >/dev/null 2>&1; then
+        echo "flush set $DOCKER_FAMILY filter cnwall_blacklist" >> "$tmp"
     else
-        echo "add set $DOCKER_FAMILY filter blacklist { type ipv4_addr; }" >> "$tmp"
+        echo "add set $DOCKER_FAMILY filter cnwall_blacklist { type ipv4_addr; }" >> "$tmp"
     fi
 
     while IFS= read -r entry; do
-        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter china { $entry }" >> "$tmp"
+        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter cnwall_china { $entry }" >> "$tmp"
     done <<< "$china_entries"
     while IFS= read -r entry; do
-        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter whitelist { $entry }" >> "$tmp"
+        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter cnwall_whitelist { $entry }" >> "$tmp"
     done <<< "$white_entries"
     while IFS= read -r entry; do
-        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter blacklist { $entry }" >> "$tmp"
+        [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter cnwall_blacklist { $entry }" >> "$tmp"
     done <<< "$black_entries"
 
     CNWALL_DOCKER_CHAIN="cnwall_docker_user"
@@ -142,11 +142,9 @@ if [[ -n "$DOCKER_FAMILY" ]]; then
     else
         echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp"
     fi
-    if ! nft list chain "$DOCKER_FAMILY" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN"; then
-        echo "insert rule $DOCKER_FAMILY filter DOCKER-USER index 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp"
-    fi
-    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @whitelist comment \"cnwall\" accept" >> "$tmp"
-    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @blacklist comment \"cnwall\" drop" >> "$tmp"
+    # 跳转挂载改为应用后执行，避免批处理内因版本差异失败
+    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist comment \"cnwall\" accept" >> "$tmp"
+    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_blacklist comment \"cnwall\" drop" >> "$tmp"
 
     services_docker=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
     while IFS= read -r svc; do
@@ -157,7 +155,7 @@ if [[ -n "$DOCKER_FAMILY" ]]; then
         for ((i=0; i<port_count; i++)); do
             port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
             proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @china $proto dport $port comment \"cnwall\" accept" >> "$tmp"
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_china $proto dport $port comment \"cnwall\" accept" >> "$tmp"
             if [[ "$allow_lan" == "true" ]]; then
                 echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port comment \"cnwall\" accept" >> "$tmp"
             fi
@@ -170,8 +168,10 @@ fi
 # 4. 执行（失败时回退到无日志/限速版本，兼容老内核）
 if ! output=$(nft -f "$tmp" 2>&1); then
     echo "$output" | tee -a "$LOG" 1>/dev/null
-    echo "------ 失败的 nft 脚本 ------" >> "$LOG"
-    sed -n '1,200p' "$tmp" >> "$LOG"
+    echo "------ 失败的 nft 脚本 (前100行) ------" >> "$LOG"
+    sed -n '1,100p' "$tmp" >> "$LOG"
+    echo "------ 失败的 nft 脚本 (后100行) ------" >> "$LOG"
+    tail -n 100 "$tmp" >> "$LOG"
     echo "------ 结束 ------" >> "$LOG"
     log "尝试使用兼容版本（移除 log/limit/auto-merge）..."
 
@@ -232,30 +232,30 @@ EOF
     fi
 
     if [[ -n "$DOCKER_FAMILY" ]]; then
-        if nft list set "$DOCKER_FAMILY" filter china >/dev/null 2>&1; then
-            echo "flush set $DOCKER_FAMILY filter china" >> "$tmp2"
+        if nft list set "$DOCKER_FAMILY" filter cnwall_china >/dev/null 2>&1; then
+            echo "flush set $DOCKER_FAMILY filter cnwall_china" >> "$tmp2"
         else
-            echo "add set $DOCKER_FAMILY filter china { type ipv4_addr; flags interval; }" >> "$tmp2"
+            echo "add set $DOCKER_FAMILY filter cnwall_china { type ipv4_addr; flags interval; }" >> "$tmp2"
         fi
-        if nft list set "$DOCKER_FAMILY" filter whitelist >/dev/null 2>&1; then
-            echo "flush set $DOCKER_FAMILY filter whitelist" >> "$tmp2"
+        if nft list set "$DOCKER_FAMILY" filter cnwall_whitelist >/dev/null 2>&1; then
+            echo "flush set $DOCKER_FAMILY filter cnwall_whitelist" >> "$tmp2"
         else
-            echo "add set $DOCKER_FAMILY filter whitelist { type ipv4_addr; }" >> "$tmp2"
+            echo "add set $DOCKER_FAMILY filter cnwall_whitelist { type ipv4_addr; }" >> "$tmp2"
         fi
-        if nft list set "$DOCKER_FAMILY" filter blacklist >/dev/null 2>&1; then
-            echo "flush set $DOCKER_FAMILY filter blacklist" >> "$tmp2"
+        if nft list set "$DOCKER_FAMILY" filter cnwall_blacklist >/dev/null 2>&1; then
+            echo "flush set $DOCKER_FAMILY filter cnwall_blacklist" >> "$tmp2"
         else
-            echo "add set $DOCKER_FAMILY filter blacklist { type ipv4_addr; }" >> "$tmp2"
+            echo "add set $DOCKER_FAMILY filter cnwall_blacklist { type ipv4_addr; }" >> "$tmp2"
         fi
 
         while IFS= read -r entry; do
-            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter china { $entry }" >> "$tmp2"
+            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter cnwall_china { $entry }" >> "$tmp2"
         done <<< "$china_entries"
         while IFS= read -r entry; do
-            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter whitelist { $entry }" >> "$tmp2"
+            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter cnwall_whitelist { $entry }" >> "$tmp2"
         done <<< "$white_entries"
         while IFS= read -r entry; do
-            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter blacklist { $entry }" >> "$tmp2"
+            [[ -n "$entry" ]] && echo "add element $DOCKER_FAMILY filter cnwall_blacklist { $entry }" >> "$tmp2"
         done <<< "$black_entries"
 
         CNWALL_DOCKER_CHAIN="cnwall_docker_user"
@@ -264,11 +264,9 @@ EOF
         else
             echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp2"
         fi
-        if ! nft list chain "$DOCKER_FAMILY" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN"; then
-            echo "insert rule $DOCKER_FAMILY filter DOCKER-USER index 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp2"
-        fi
-        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @whitelist comment \"cnwall\" accept" >> "$tmp2"
-        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @blacklist comment \"cnwall\" drop" >> "$tmp2"
+        # 跳转挂载改为应用后执行，避免批处理内因版本差异失败
+        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist comment \"cnwall\" accept" >> "$tmp2"
+        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_blacklist comment \"cnwall\" drop" >> "$tmp2"
 
         services_docker=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
         while IFS= read -r svc; do
@@ -279,7 +277,7 @@ EOF
             for ((i=0; i<port_count; i++)); do
                 port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
                 proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-                echo "add rule $DOCKER_FAMILY filter DOCKER-USER ip saddr @china $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_china $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
                 if [[ "$allow_lan" == "true" ]]; then
                 echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
                 fi
@@ -293,8 +291,10 @@ EOF
 
     if ! output2=$(nft -f "$tmp2" 2>&1); then
         echo "$output2" | tee -a "$LOG" 1>/dev/null
-        echo "------ 兼容版失败脚本 ------" >> "$LOG"
-        sed -n '1,200p' "$tmp2" >> "$LOG"
+        echo "------ 兼容版失败脚本 (前100行) ------" >> "$LOG"
+        sed -n '1,100p' "$tmp2" >> "$LOG"
+        echo "------ 兼容版失败脚本 (后100行) ------" >> "$LOG"
+        tail -n 100 "$tmp2" >> "$LOG"
         echo "------ 结束 ------" >> "$LOG"
         log "nft 应用失败"
         rm -f "$tmp" "$tmp2"
@@ -309,3 +309,33 @@ white_nft_count=$(nft list set ip cnwall whitelist 2>/dev/null | sed -n '/elemen
 black_nft_count=$(nft list set ip cnwall blacklist 2>/dev/null | sed -n '/elements/,$p' | sed '1d' | tr -d ' \n' | sed 's/,$//' | tr ',' '\n' | wc -l | tr -d ' ')
 log "nft 集合: china=${china_nft_count:-0} whitelist=${white_nft_count:-0} blacklist=${black_nft_count:-0}"
 log "规则应用成功"
+
+# 在应用完成后，挂载 DOCKER-USER 跳转（失败仅记录日志，不影响主流程）
+DOCKER_FAMILY_POST=""
+if nft list chain inet filter DOCKER-USER >/dev/null 2>&1; then
+    DOCKER_FAMILY_POST="inet"
+elif nft list chain ip filter DOCKER-USER >/dev/null 2>&1; then
+    DOCKER_FAMILY_POST="ip"
+fi
+
+if [[ -n "$DOCKER_FAMILY_POST" ]]; then
+    CNWALL_DOCKER_CHAIN_POST="cnwall_docker_user"
+    if nft list chain "$DOCKER_FAMILY_POST" filter "$CNWALL_DOCKER_CHAIN_POST" >/dev/null 2>&1; then
+        :
+    else
+        if ! nft add chain "$DOCKER_FAMILY_POST" filter "$CNWALL_DOCKER_CHAIN_POST" \{ policy accept \} 2>/dev/null; then
+            log "无法创建 $DOCKER_FAMILY_POST filter $CNWALL_DOCKER_CHAIN_POST"
+        fi
+    fi
+    if nft list chain "$DOCKER_FAMILY_POST" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN_POST"; then
+        log "DOCKER-USER 已挂载 cnwall 钩子"
+    else
+        if nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER index 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>/dev/null; then
+            log "已插入 DOCKER-USER 跳转(index 0)"
+        elif nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>/dev/null; then
+            log "已插入 DOCKER-USER 跳转(position 0)"
+        else
+            log "插入 DOCKER-USER 跳转失败"
+        fi
+    fi
+fi
