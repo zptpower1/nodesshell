@@ -48,6 +48,8 @@ add set ip cnwall blacklist { type ipv4_addr; }
 add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
 
 # 基础规则（prerouting）
+add rule ip cnwall docker_prerouting iifname "lo" accept
+add rule ip cnwall docker_prerouting ip saddr 127.0.0.1 accept
 add rule ip cnwall docker_prerouting ip saddr @whitelist accept
 add rule ip cnwall docker_prerouting ip saddr @blacklist limit rate 20/second log prefix "cnwall: drop blacklist (pre) " level warning counter drop
 EOF
@@ -119,6 +121,8 @@ add set ip cnwall blacklist { type ipv4_addr; }
 add chain ip cnwall docker_prerouting { type filter hook prerouting priority -150; policy accept; }
 
 # 基础规则（prerouting）
+add rule ip cnwall docker_prerouting iifname "lo" accept
+add rule ip cnwall docker_prerouting ip saddr 127.0.0.1 accept
 add rule ip cnwall docker_prerouting ip saddr @whitelist accept
 add rule ip cnwall docker_prerouting ip saddr @blacklist drop
 EOF
