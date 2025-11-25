@@ -45,7 +45,7 @@ add set ip cnwall china { type ipv4_addr; flags interval; }
 add set ip cnwall whitelist { type ipv4_addr; }
 add set ip cnwall blacklist { type ipv4_addr; }
 
-add chain ip cnwall host_input { type filter hook input priority 0; policy accept; }
+add chain ip cnwall host_input { type filter hook input priority 0; }
 
 # 基础规则（input）
 add rule ip cnwall host_input iifname "lo" accept
@@ -143,7 +143,7 @@ if [[ -n "$DOCKER_FAMILY" ]]; then
     if nft list chain "$DOCKER_FAMILY" filter "$CNWALL_DOCKER_CHAIN" >/dev/null 2>&1; then
         echo "flush chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp"
     else
-        echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp"
+        echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp"
     fi
     # 跳转挂载改为应用后执行，避免批处理内因版本差异失败
     echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist comment \"cnwall\" accept" >> "$tmp"
@@ -171,6 +171,13 @@ fi
 # 4. 执行（失败时回退到无日志/限速版本，兼容老内核）
 if ! output=$(nft -f "$tmp" 2>&1); then
     echo "$output" | tee -a "$LOG" 1>/dev/null
+    err_line=$(echo "$output" | sed -n 's/.*line \([0-9][0-9]*\).*/\1/p' | head -1)
+    if [[ -n "$err_line" ]]; then
+        start=$((err_line>10 ? err_line-10 : 1))
+        end=$((err_line+10))
+        echo "------ 失败位置上下文 (第${err_line}行) ------" >> "$LOG"
+        sed -n "${start},${end}p" "$tmp" | nl -ba >> "$LOG"
+    fi
     echo "------ 失败的 nft 脚本 (前100行) ------" >> "$LOG"
     sed -n '1,100p' "$tmp" >> "$LOG"
     echo "------ 失败的 nft 脚本 (后100行) ------" >> "$LOG"
@@ -188,7 +195,7 @@ add set ip cnwall china { type ipv4_addr; flags interval; }
 add set ip cnwall whitelist { type ipv4_addr; }
 add set ip cnwall blacklist { type ipv4_addr; }
 
-add chain ip cnwall host_input { type filter hook input priority 0; policy accept; }
+add chain ip cnwall host_input { type filter hook input priority 0; }
 
 # 基础规则（input）
 add rule ip cnwall host_input iifname "lo" accept
@@ -268,7 +275,7 @@ EOF
         if nft list chain "$DOCKER_FAMILY" filter "$CNWALL_DOCKER_CHAIN" >/dev/null 2>&1; then
             echo "flush chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp2"
         else
-            echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp2"
+            echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp2"
         fi
         # 跳转挂载改为应用后执行，避免批处理内因版本差异失败
         echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist comment \"cnwall\" accept" >> "$tmp2"
@@ -329,7 +336,7 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
     if nft list chain "$DOCKER_FAMILY_POST" filter "$CNWALL_DOCKER_CHAIN_POST" >/dev/null 2>&1; then
         :
     else
-        if ! nft add chain "$DOCKER_FAMILY_POST" filter "$CNWALL_DOCKER_CHAIN_POST" \{ policy accept \} 2>/dev/null; then
+        if ! nft add chain "$DOCKER_FAMILY_POST" filter "$CNWALL_DOCKER_CHAIN_POST" 2>/dev/null; then
             log "无法创建 $DOCKER_FAMILY_POST filter $CNWALL_DOCKER_CHAIN_POST"
         fi
     fi
