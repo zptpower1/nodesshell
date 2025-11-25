@@ -343,7 +343,13 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
     if nft list chain "$DOCKER_FAMILY_POST" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN_POST"; then
         log "DOCKER-USER 已挂载 cnwall 钩子"
     else
-        if output_ins_idx=$(nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER index 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>&1); then
+        old_handles=$(nft -a list chain "$DOCKER_FAMILY_POST" filter DOCKER-USER 2>/dev/null | awk '/cnwall hook|jump cnwall_docker_user/{for(i=1;i<=NF;i++){if($i=="handle"){print $(i+1)}}}')
+        for h in $old_handles; do
+            nft delete rule "$DOCKER_FAMILY_POST" filter DOCKER-USER handle "$h" 2>/dev/null || true
+        done
+        if output_force_pos0=$(nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>&1); then
+            log "已成功强制插入 DOCKER-USER 最前面 → $CNWALL_DOCKER_CHAIN_POST"
+        elif output_ins_idx=$(nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER index 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>&1); then
             log "已插入 DOCKER-USER 跳转(index 0)"
         elif output_ins_pos=$(nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 jump "$CNWALL_DOCKER_CHAIN_POST" comment "cnwall hook" 2>&1); then
             log "已插入 DOCKER-USER 跳转(position 0)"
@@ -351,9 +357,75 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
             log "已追加 DOCKER-USER 跳转(末尾)"
         else
             log "插入 DOCKER-USER 跳转失败"
+            echo "$output_force_pos0" >> "$LOG" 2>/dev/null || true
             echo "$output_ins_idx" >> "$LOG" 2>/dev/null || true
             echo "$output_ins_pos" >> "$LOG" 2>/dev/null || true
             echo "$output_add" >> "$LOG" 2>/dev/null || true
+
+            # 回退：直接在 DOCKER-USER 内联应用规则（nft-only）
+            # 1) 确保 DOCKER-USER 家族下的集合存在并填充
+            if ! nft list table "$DOCKER_FAMILY_POST" filter >/dev/null 2>&1; then
+                nft add table "$DOCKER_FAMILY_POST" filter 2>/dev/null || true
+            fi
+            if nft list set "$DOCKER_FAMILY_POST" filter cnwall_china >/dev/null 2>&1; then
+                :
+            else
+                nft add set "$DOCKER_FAMILY_POST" filter cnwall_china { type ipv4_addr; flags interval; } 2>/dev/null || true
+                while IFS= read -r entry; do
+                    [[ -n "$entry" ]] && nft add element "$DOCKER_FAMILY_POST" filter cnwall_china { "$entry" } 2>/dev/null || true
+                done <<< "$china_entries"
+            fi
+            if nft list set "$DOCKER_FAMILY_POST" filter cnwall_whitelist >/dev/null 2>&1; then
+                :
+            else
+                nft add set "$DOCKER_FAMILY_POST" filter cnwall_whitelist { type ipv4_addr; } 2>/dev/null || true
+                while IFS= read -r entry; do
+                    [[ -n "$entry" ]] && nft add element "$DOCKER_FAMILY_POST" filter cnwall_whitelist { "$entry" } 2>/dev/null || true
+                done <<< "$white_entries"
+            fi
+            if nft list set "$DOCKER_FAMILY_POST" filter cnwall_blacklist >/dev/null 2>&1; then
+                :
+            else
+                nft add set "$DOCKER_FAMILY_POST" filter cnwall_blacklist { type ipv4_addr; } 2>/dev/null || true
+                while IFS= read -r entry; do
+                    [[ -n "$entry" ]] && nft add element "$DOCKER_FAMILY_POST" filter cnwall_blacklist { "$entry" } 2>/dev/null || true
+                done <<< "$black_entries"
+            fi
+
+            # 2) 内联基础规则（优先级：白名单放行 > 黑名单丢弃）
+            if ! nft list chain "$DOCKER_FAMILY_POST" filter DOCKER-USER | grep -q 'ip saddr @cnwall_whitelist .*accept comment "cnwall"'; then
+                nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 ip saddr @cnwall_whitelist accept comment "cnwall" 2>/dev/null || true
+            fi
+            if ! nft list chain "$DOCKER_FAMILY_POST" filter DOCKER-USER | grep -q 'ip saddr @cnwall_blacklist .*drop comment "cnwall"'; then
+                nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 ip saddr @cnwall_blacklist drop comment "cnwall" 2>/dev/null || true
+            fi
+
+            # 3) 按服务内联端口规则（中国/LAN/TS 放行，默认丢弃）
+            services_inline=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
+            while IFS= read -r svc; do
+                [[ -z "$svc" ]] && continue
+                allow_lan_inline=$("$YQ" e ".services.\"$svc\".allow_lan" "$CONFIG")
+                ports_json_inline=$("$YQ" e -o=json ".services.\"$svc\".ports // []" "$CONFIG")
+                port_count_inline=$(echo "$ports_json_inline" | "$YQ" e 'length' -)
+                for ((ii=0; ii<port_count_inline; ii++)); do
+                    port_inline=$(echo "$ports_json_inline" | "$YQ" e ".[$ii].port" -)
+                    proto_inline=$(echo "$ports_json_inline" | "$YQ" e ".[$ii].protocol" -)
+                    # 中国 IP 放行
+                    nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 ip saddr @cnwall_china "$proto_inline" dport "$port_inline" accept comment "cnwall" 2>/dev/null || true
+                    # LAN 放行
+                    if [[ "$allow_lan_inline" == "true" ]]; then
+                        for lan_inline in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 127.0.0.0/8 100.64.0.0/10; do
+                            nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 ip saddr "$lan_inline" "$proto_inline" dport "$port_inline" accept comment "cnwall" 2>/dev/null || true
+                        done
+                    fi
+                    # TS 放行
+                    nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 ip saddr 100.64.0.0/10 "$proto_inline" dport "$port_inline" accept comment "cnwall" 2>/dev/null || true
+                    # 默认丢弃（置顶插入，保障优先匹配）
+                    nft insert rule "$DOCKER_FAMILY_POST" filter DOCKER-USER position 0 "$proto_inline" dport "$port_inline" drop comment "cnwall" 2>/dev/null || true
+                done
+            done <<< "$services_inline"
+
+            log "已在 DOCKER-USER 直接内联应用 cnwall 规则"
         fi
     fi
 fi
