@@ -146,8 +146,8 @@ if [[ -n "$DOCKER_FAMILY" ]]; then
         echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp"
     fi
     # 跳转挂载改为应用后执行，避免批处理内因版本差异失败
-    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist comment \"cnwall\" accept" >> "$tmp"
-    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_blacklist comment \"cnwall\" drop" >> "$tmp"
+    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist accept comment \"cnwall\"" >> "$tmp"
+    echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_blacklist drop comment \"cnwall\"" >> "$tmp"
 
     services_docker=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
     while IFS= read -r svc; do
@@ -158,12 +158,12 @@ if [[ -n "$DOCKER_FAMILY" ]]; then
         for ((i=0; i<port_count; i++)); do
             port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
             proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_china $proto dport $port comment \"cnwall\" accept" >> "$tmp"
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_china $proto dport $port accept comment \"cnwall\"" >> "$tmp"
             if [[ "$allow_lan" == "true" ]]; then
-                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port comment \"cnwall\" accept" >> "$tmp"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port accept comment \"cnwall\"" >> "$tmp"
             fi
-            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr 100.64.0.0/10 $proto dport $port comment \"cnwall\" accept" >> "$tmp"
-            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN $proto dport $port comment \"cnwall\" drop" >> "$tmp"
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr 100.64.0.0/10 $proto dport $port accept comment \"cnwall\"" >> "$tmp"
+            echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN $proto dport $port drop comment \"cnwall\"" >> "$tmp"
         done
     done <<< "$services_docker"
 fi
@@ -278,8 +278,8 @@ EOF
             echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN" >> "$tmp2"
         fi
         # 跳转挂载改为应用后执行，避免批处理内因版本差异失败
-        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist comment \"cnwall\" accept" >> "$tmp2"
-        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_blacklist comment \"cnwall\" drop" >> "$tmp2"
+        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_whitelist accept comment \"cnwall\"" >> "$tmp2"
+        echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_blacklist drop comment \"cnwall\"" >> "$tmp2"
 
         services_docker=$("$YQ" e '.services | keys | .[]' "$CONFIG" 2>/dev/null || true)
         while IFS= read -r svc; do
@@ -290,12 +290,12 @@ EOF
             for ((i=0; i<port_count; i++)); do
                 port=$(echo "$ports_json" | "$YQ" e ".[$i].port" -)
                 proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
-                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_china $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @cnwall_china $proto dport $port accept comment \"cnwall\"" >> "$tmp2"
                 if [[ "$allow_lan" == "true" ]]; then
-                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, 100.64.0.0/10 } $proto dport $port accept comment \"cnwall\"" >> "$tmp2"
                 fi
-                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr 100.64.0.0/10 $proto dport $port comment \"cnwall\" accept" >> "$tmp2"
-                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN $proto dport $port comment \"cnwall\" drop" >> "$tmp2"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr 100.64.0.0/10 $proto dport $port accept comment \"cnwall\"" >> "$tmp2"
+                echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN $proto dport $port drop comment \"cnwall\"" >> "$tmp2"
             done
         done <<< "$services_docker"
     fi
