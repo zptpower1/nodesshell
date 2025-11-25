@@ -18,12 +18,20 @@ if command -v nft >/dev/null 2>&1; then
     nft delete set "$fam" filter cnwall_blacklist 2>/dev/null || true
     nft delete chain "$fam" filter cnwall_docker_user 2>/dev/null || true
     if nft list chain "$fam" filter DOCKER-USER >/dev/null 2>&1; then
-      handles=$(nft -a list chain "$fam" filter DOCKER-USER 2>/dev/null | awk '/jump cnwall_docker_user/{for(i=1;i<=NF;i++){if($i=="handle"){print $(i+1)}}}')
+      handles=$(nft -a list chain "$fam" filter DOCKER-USER 2>/dev/null | awk '/cnwall|jump cnwall_docker_user/{for(i=1;i<=NF;i++){if($i=="handle"){print $(i+1)}}}')
       for h in $handles; do
         nft delete rule "$fam" filter DOCKER-USER handle "$h" 2>/dev/null || true
       done
     fi
   done
+  if command -v iptables >/dev/null 2>&1; then
+    lines=$(iptables -S DOCKER-USER 2>/dev/null | grep -F ' -m comment --comment cnwall' || true)
+    while IFS= read -r ln; do
+      [ -z "$ln" ] && continue
+      del=$(echo "$ln" | sed 's/^-A /-D /')
+      iptables $del 2>/dev/null || true
+    done <<< "$lines"
+  fi
   log "已清理 nft 表、过滤集合与 DOCKER-USER 跳转"
 else
   log "未检测到 nft"
