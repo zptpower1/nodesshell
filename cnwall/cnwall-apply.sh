@@ -370,7 +370,7 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
             if nft list set "$DOCKER_FAMILY_POST" filter cnwall_china >/dev/null 2>&1; then
                 :
             else
-                nft add set "$DOCKER_FAMILY_POST" filter cnwall_china { type ipv4_addr; flags interval; } 2>/dev/null || true
+                nft add set "$DOCKER_FAMILY_POST" filter cnwall_china \{ type ipv4_addr\; flags interval\; \} 2>/dev/null || true
                 while IFS= read -r entry; do
                     [[ -n "$entry" ]] && nft add element "$DOCKER_FAMILY_POST" filter cnwall_china { "$entry" } 2>/dev/null || true
                 done <<< "$china_entries"
@@ -378,7 +378,7 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
             if nft list set "$DOCKER_FAMILY_POST" filter cnwall_whitelist >/dev/null 2>&1; then
                 :
             else
-                nft add set "$DOCKER_FAMILY_POST" filter cnwall_whitelist { type ipv4_addr; } 2>/dev/null || true
+                nft add set "$DOCKER_FAMILY_POST" filter cnwall_whitelist \{ type ipv4_addr\; \} 2>/dev/null || true
                 while IFS= read -r entry; do
                     [[ -n "$entry" ]] && nft add element "$DOCKER_FAMILY_POST" filter cnwall_whitelist { "$entry" } 2>/dev/null || true
                 done <<< "$white_entries"
@@ -386,7 +386,7 @@ if [[ -n "$DOCKER_FAMILY_POST" ]]; then
             if nft list set "$DOCKER_FAMILY_POST" filter cnwall_blacklist >/dev/null 2>&1; then
                 :
             else
-                nft add set "$DOCKER_FAMILY_POST" filter cnwall_blacklist { type ipv4_addr; } 2>/dev/null || true
+                nft add set "$DOCKER_FAMILY_POST" filter cnwall_blacklist \{ type ipv4_addr\; \} 2>/dev/null || true
                 while IFS= read -r entry; do
                     [[ -n "$entry" ]] && nft add element "$DOCKER_FAMILY_POST" filter cnwall_blacklist { "$entry" } 2>/dev/null || true
                 done <<< "$black_entries"
