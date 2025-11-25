@@ -13,6 +13,16 @@ if command -v nft >/dev/null 2>&1; then
   nft delete table inet cnwall 2>/dev/null || true
   # 删除 DOCKER-USER 专用链与跳转、过滤表中的 cnwall_* 集合（inet/ip 两种家族）
   for fam in inet ip; do
+    chains=$(nft list table "$fam" filter 2>/dev/null | awk '/^chain /{print $2}')
+    for ch in $chains; do
+      handles=$(nft -a list chain "$fam" filter "$ch" 2>/dev/null | awk '/@cnwall_china|@cnwall_whitelist|@cnwall_blacklist|jump cnwall_docker_user/{for(i=1;i<=NF;i++){if($i=="handle"){print $(i+1)}}}')
+      for h in $handles; do
+        nft delete rule "$fam" filter "$ch" handle "$h" 2>/dev/null || true
+      done
+    done
+    nft flush set "$fam" filter cnwall_china 2>/dev/null || true
+    nft flush set "$fam" filter cnwall_whitelist 2>/dev/null || true
+    nft flush set "$fam" filter cnwall_blacklist 2>/dev/null || true
     nft delete set "$fam" filter cnwall_china 2>/dev/null || true
     nft delete set "$fam" filter cnwall_whitelist 2>/dev/null || true
     nft delete set "$fam" filter cnwall_blacklist 2>/dev/null || true
