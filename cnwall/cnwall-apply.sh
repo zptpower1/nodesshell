@@ -89,7 +89,7 @@ while IFS= read -r svc; do
         proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
         echo "add rule ip cnwall docker_prerouting ip saddr @china $proto dport $port limit rate 20/second log prefix \"cnwall: allow CN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
         if [[ "$allow_lan" == "true" ]]; then
-            echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
+            echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10 } $proto dport $port limit rate 20/second log prefix \"cnwall: allow LAN $svc $proto $port (pre) \" level info counter accept" >> "$tmp"
         fi
         echo "add rule ip cnwall docker_prerouting $proto dport $port limit rate 10/second log prefix \"cnwall: drop non-match $svc $proto $port (pre) \" level warning counter drop" >> "$tmp"
     done
@@ -146,7 +146,7 @@ EOF
             proto=$(echo "$ports_json" | "$YQ" e ".[$i].protocol" -)
             echo "add rule ip cnwall docker_prerouting ip saddr @china $proto dport $port accept" >> "$tmp2"
             if [[ "$allow_lan" == "true" ]]; then
-                echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } $proto dport $port accept" >> "$tmp2"
+                echo "add rule ip cnwall docker_prerouting ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10 } $proto dport $port accept" >> "$tmp2"
             fi
             echo "add rule ip cnwall docker_prerouting $proto dport $port drop" >> "$tmp2"
         done

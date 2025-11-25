@@ -109,6 +109,7 @@ if [[ -x "$YQ" ]] || command -v yq >/dev/null 2>&1; then
           echo "$rl" | grep -q "192.168.0.0/16" || continue
           echo "$rl" | grep -q "10.0.0.0/8" || continue
           echo "$rl" | grep -q "172.16.0.0/12" || continue
+          echo "$rl" | grep -q "100.64.0.0/10" || continue
           echo "$rl" | grep -q "accept" || continue
           has_lan=yes; break
         done
@@ -174,6 +175,7 @@ for r in "${rules[@]}"; do
           echo "$r" | grep -q "192.168.0.0/16" || continue
           echo "$r" | grep -q "10.0.0.0/8" || continue
           echo "$r" | grep -q "172.16.0.0/12" || continue
+          echo "$r" | grep -q "100.64.0.0/10" || continue
           echo "$r" | grep -q "accept" || continue
           ok=yes; break 2
         done
