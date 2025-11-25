@@ -143,7 +143,7 @@ if [[ -n "$DOCKER_FAMILY" ]]; then
         echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp"
     fi
     if ! nft list chain "$DOCKER_FAMILY" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN"; then
-        echo "insert rule $DOCKER_FAMILY filter DOCKER-USER position 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp"
+        echo "insert rule $DOCKER_FAMILY filter DOCKER-USER index 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp"
     fi
     echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @whitelist comment \"cnwall\" accept" >> "$tmp"
     echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @blacklist comment \"cnwall\" drop" >> "$tmp"
@@ -265,7 +265,7 @@ EOF
             echo "add chain $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN { policy accept; }" >> "$tmp2"
         fi
         if ! nft list chain "$DOCKER_FAMILY" filter DOCKER-USER | grep -q "jump $CNWALL_DOCKER_CHAIN"; then
-            echo "insert rule $DOCKER_FAMILY filter DOCKER-USER position 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp2"
+            echo "insert rule $DOCKER_FAMILY filter DOCKER-USER index 0 jump $CNWALL_DOCKER_CHAIN comment \"cnwall hook\"" >> "$tmp2"
         fi
         echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @whitelist comment \"cnwall\" accept" >> "$tmp2"
         echo "add rule $DOCKER_FAMILY filter $CNWALL_DOCKER_CHAIN ip saddr @blacklist comment \"cnwall\" drop" >> "$tmp2"
