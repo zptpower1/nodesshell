@@ -2,7 +2,8 @@ from .system import has_cmd, run_cmd
 
 TABLE = "inet"
 TABLE_NAME = "cnwall"
-CHAIN = "filter"
+CHAIN_INPUT = "filter_input"
+CHAIN_FORWARD = "filter_forward"
 SET_NAME = "cnwall_china"
 
 def available() -> bool:
@@ -12,7 +13,8 @@ def ensure_table_chain_set() -> None:
     if not available():
         return
     run_cmd(["nft", "add", "table", TABLE, TABLE_NAME])
-    run_cmd(["nft", "add", "chain", TABLE, TABLE_NAME, CHAIN])
+    run_cmd(["nft", "add", "chain", TABLE, TABLE_NAME, CHAIN_INPUT, "{", "type", "filter", "hook", "input", "priority", "0", ";", "policy", "accept", ";", "}"])
+    run_cmd(["nft", "add", "chain", TABLE, TABLE_NAME, CHAIN_FORWARD, "{", "type", "filter", "hook", "forward", "priority", "0", ";", "policy", "accept", ";", "}"])
     run_cmd(["nft", "add", "set", TABLE, TABLE_NAME, SET_NAME, "{", "type", "ipv4_addr", ";", "flags", "interval", ";", "}"])
 
 def flush_set() -> None:
@@ -31,19 +33,25 @@ def add_elements(elements: list) -> None:
 def add_block_rule(port: int, proto: str = "tcp") -> None:
     if not available():
         return
-    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN, proto, "dport", str(port), "ip", "saddr", f"@{SET_NAME}", "counter", "drop"])
+    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_INPUT, proto, "dport", str(port), "ip", "saddr", f"@{SET_NAME}", "counter", "drop"])
+    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_FORWARD, proto, "dport", str(port), "ip", "saddr", f"@{SET_NAME}", "counter", "drop"])
 
 def delete_block_rule(port: int, proto: str = "tcp") -> None:
     if not available():
         return
-    rules = run_cmd(["nft", "list", "chain", TABLE, TABLE_NAME, CHAIN]).stdout.splitlines()
-    for line in rules:
-        if f"{proto} dport {port}" in line and f"@{SET_NAME}" in line:
-            handle_part = [p for p in line.split() if p.startswith("handle")]
-            if handle_part:
-                handle = handle_part[0].split()[1] if len(handle_part[0].split()) > 1 else None
-                if handle:
-                    run_cmd(["nft", "delete", "rule", TABLE, TABLE_NAME, CHAIN, "handle", handle])
+    for chain in (CHAIN_INPUT, CHAIN_FORWARD):
+        r = run_cmd(["nft", "list", "chain", TABLE, TABLE_NAME, chain])
+        if r.returncode != 0:
+            continue
+        rules = r.stdout.splitlines()
+        for line in rules:
+            if f"{proto} dport {port}" in line and f"@{SET_NAME}" in line:
+                parts = line.split()
+                if "handle" in parts:
+                    idx = parts.index("handle")
+                    if idx + 1 < len(parts):
+                        handle = parts[idx + 1]
+                        run_cmd(["nft", "delete", "rule", TABLE, TABLE_NAME, chain, "handle", handle])
 
 def list_ours() -> str:
     if not available():
@@ -56,4 +64,5 @@ def list_ours() -> str:
 def add_block_non_china_rule(port: int, proto: str = "tcp") -> None:
     if not available():
         return
-    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
+    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_INPUT, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
+    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_FORWARD, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
