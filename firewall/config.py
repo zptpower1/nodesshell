@@ -6,7 +6,7 @@ DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
 def load_config(path: str = None) -> dict:
     p = path or DEFAULT_CONFIG_PATH
     if not os.path.exists(p):
-        return {"ports": [], "china_ip_source": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt", "schedule_cron": "0 3 * * *"}
+        return {"ports": [], "china_ip_source": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt", "schedule_cron": "0 3 * * *", "allow_private": True}
     with open(p, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 

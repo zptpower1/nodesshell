@@ -57,6 +57,7 @@ ports:
     container: ""
 china_ip_source: "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt"
 schedule_cron: "0 3 * * *"
+allow_private: true
 ```
 字段说明：
 - `ports[].port`：端口号
@@ -66,6 +67,7 @@ schedule_cron: "0 3 * * *"
 - `ports[].container`：容器名（设置时走 `ufw-docker allow <container> <port> <proto>`；为空则对宿主端口执行 `ufw allow`）
 - `china_ip_source`：中国 IP CIDR 列表下载地址
 - `schedule_cron`：定时任务表达式（设置为每天 03:00）
+- `allow_private`：默认放行私网与本地地址（10/8, 172.16/12, 192.168/16, 127/8）
 
 ## 常用命令
 - `status`：打印 UFW、nftables 与 ipset 状态，以及 Docker 发布端口

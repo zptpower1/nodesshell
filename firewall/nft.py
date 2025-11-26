@@ -66,3 +66,25 @@ def add_block_non_china_rule(port: int, proto: str = "tcp") -> None:
         return
     run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_INPUT, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
     run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_FORWARD, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
+
+def add_accept_rule(port: int, proto: str, cidr: str) -> None:
+    if not available():
+        return
+    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_INPUT, proto, "dport", str(port), "ip", "saddr", cidr, "counter", "accept"])
+    run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_FORWARD, proto, "dport", str(port), "ip", "saddr", cidr, "counter", "accept"])
+
+def delete_accept_rule(port: int, proto: str, cidr: str) -> None:
+    if not available():
+        return
+    for chain in (CHAIN_INPUT, CHAIN_FORWARD):
+        r = run_cmd(["nft", "list", "chain", TABLE, TABLE_NAME, chain])
+        if r.returncode != 0:
+            continue
+        for line in r.stdout.splitlines():
+            if f"{proto} dport {port}" in line and cidr in line and "accept" in line:
+                parts = line.split()
+                if "handle" in parts:
+                    idx = parts.index("handle")
+                    if idx + 1 < len(parts):
+                        handle = parts[idx + 1]
+                        run_cmd(["nft", "delete", "rule", TABLE, TABLE_NAME, chain, "handle", handle])
