@@ -24,5 +24,6 @@ def list_set() -> str:
     if not available():
         return "ipset未安装"
     r = run_cmd(["ipset", "list", SET_NAME])
+    if r.returncode != 0:
+        return f"未创建ipset集合 {SET_NAME}"
     return r.stdout or r.stderr
-

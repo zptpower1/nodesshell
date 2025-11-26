@@ -49,6 +49,8 @@ def list_ours() -> str:
     if not available():
         return "nft未安装"
     r = run_cmd(["nft", "list", "table", TABLE, TABLE_NAME])
+    if r.returncode != 0:
+        return "未创建nft表或链或集合: inet cnwall/filter, set cnwall_china"
     return r.stdout or r.stderr
 
 def add_block_non_china_rule(port: int, proto: str = "tcp") -> None:
