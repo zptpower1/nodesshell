@@ -50,6 +50,8 @@ ports:
     open: true
     china_policy: block_china
     container: webapp
+    whitelist_cidrs: ["203.0.113.0/24"]
+    blacklist_cidrs: ["198.51.100.0/24"]
   - port: 9090
     protos: [udp]
     open: false
@@ -58,6 +60,9 @@ ports:
 china_ip_source: "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt"
 schedule_cron: "0 3 * * *"
 allow_private: true
+whitelist_cidrs: []
+blacklist_cidrs: []
+prerouting_priority: -350
 ```
 字段说明：
 - `ports[].port`：端口号
@@ -65,9 +70,14 @@ allow_private: true
 - `ports[].open`：是否开放端口（`true` 使用 `ufw-docker` 或 `ufw` 开放）
 - `ports[].china_policy`：中国 IP 策略，`none` 不限制，`block_china` 限制中国 IP，`block_non_china` 限制非中国 IP
 - `ports[].container`：容器名（设置时走 `ufw-docker allow <container> <port> <proto>`；为空则对宿主端口执行 `ufw allow`）
+- `ports[].whitelist_cidrs`：端口级白名单 CIDR，优先 `accept`
+- `ports[].blacklist_cidrs`：端口级黑名单 CIDR，随后 `drop`
 - `china_ip_source`：中国 IP CIDR 列表下载地址
 - `schedule_cron`：定时任务表达式（设置为每天 03:00）
 - `allow_private`：默认放行私网与本地地址（10/8, 172.16/12, 192.168/16, 127/8）
+- `whitelist_cidrs`：全局白名单 CIDR
+- `blacklist_cidrs`：全局黑名单 CIDR
+- `prerouting_priority`：`filter_prerouting` 的优先级（整数，越小越早执行）
 
 ## 常用命令
 - `status`：打印 UFW、nftables 与 ipset 状态，以及 Docker 发布端口
@@ -83,8 +93,8 @@ allow_private: true
 - UFW 与 ufw-docker
   - 优先使用 `ufw-docker` 允许容器端口；不存在时回退到 `ufw allow port/proto`
 - nftables
-  - 表：`inet cnwall`，链：`filter`，集合：`cnwall_china`
-  - 对 `@cnwall_china` 源地址访问指定端口的流量进行 `drop`
+  - 表：`inet cnwall`，链：`filter_prerouting`（hook prerouting，priority -350），集合：`cnwall_china`
+  - 在原始 PREROUTING 阶段统一按端口进行来源限制，优先放行白名单，再执行地域拦截；优先级设置为 -350，确保早于 Docker 的 PREROUTING 链（常见为 `raw`/-300 与 `dstnat`/-100）
 - ipset
   - 集合：`cnwall_china`，类型 `hash:net`
   - 与 nftables 集合同名，便于同时维护与查询

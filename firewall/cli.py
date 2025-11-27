@@ -1,7 +1,7 @@
 import cmd
 from .config import load_config, save_config, DEFAULT_CONFIG_PATH
 from .ufw import status as ufw_status, allow_port, deny_port, allow_docker
-from .nft import ensure_table_chain_set, flush_set as nft_flush, add_elements as nft_add_elements, add_block_rule, add_block_non_china_rule, add_accept_rule, delete_block_rule, list_ours as nft_list, count_set_elements, flush_policy_chains, delete_table
+from .nft import ensure_table_chain_set, flush_set as nft_flush, add_elements as nft_add_elements, add_block_rule, add_block_non_china_rule, add_accept_rule, add_drop_cidr_rule, list_ours as nft_list, count_set_elements, flush_policy_chains, delete_table
 from .ipset import ensure_set as ipset_ensure, flush_set as ipset_flush, add_network as ipset_add, list_set as ipset_list
 from .docker_ports import list_published
 from .system import run_cmd
@@ -26,12 +26,12 @@ class CnWallCLI(cmd.Cmd):
         print(cfg)
 
     def do_config_reset(self, arg):
-        save_config({"ports": [], "china_ip_source": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt", "schedule_cron": "0 3 * * *"})
+        save_config({"ports": [], "china_ip_source": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt", "schedule_cron": "0 3 * * *", "allow_private": True, "whitelist_cidrs": [], "blacklist_cidrs": [], "prerouting_priority": -350})
         print("已重置配置")
 
     def do_apply(self, arg):
         cfg = load_config()
-        ensure_table_chain_set()
+        ensure_table_chain_set(cfg.get("prerouting_priority", -350))
         flush_policy_chains()
         for p in cfg.get("ports", []):
             port = int(p.get("port"))
@@ -53,20 +53,25 @@ class CnWallCLI(cmd.Cmd):
                         print(allow_docker(container, port, proto))
                     else:
                         print(allow_port(port, proto))
-            # 在添加新规则前，清理旧的拦截规则以保证顺序
-            if policy in ("block_china", "block_non_china"):
-                for proto in protos:
-                    delete_block_rule(port, proto)
+            allow_private = bool(cfg.get("allow_private", True))
+            whitelist = []
+            if allow_private:
+                whitelist += ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+            whitelist += cfg.get("whitelist_cidrs", [])
+            whitelist += p.get("whitelist_cidrs", [])
+            for proto in protos:
+                for cidr in whitelist:
+                    add_accept_rule(port, proto, cidr)
+            blacklist = []
+            blacklist += cfg.get("blacklist_cidrs", [])
+            blacklist += p.get("blacklist_cidrs", [])
+            for proto in protos:
+                for cidr in blacklist:
+                    add_drop_cidr_rule(port, proto, cidr)
             if policy == "block_china":
                 for proto in protos:
                     add_block_rule(port, proto)
             elif policy == "block_non_china":
-                for proto in protos:
-                    # 先添加本地与私网白名单
-                    add_accept_rule(port, proto, "127.0.0.0/8")
-                    add_accept_rule(port, proto, "10.0.0.0/8")
-                    add_accept_rule(port, proto, "172.16.0.0/12")
-                    add_accept_rule(port, proto, "192.168.0.0/16")
                 if count_set_elements() > 0:
                     for proto in protos:
                         add_block_non_china_rule(port, proto)
@@ -83,7 +88,7 @@ class CnWallCLI(cmd.Cmd):
         src = cfg.get("china_ip_source")
         ipset_ensure()
         ipset_flush()
-        ensure_table_chain_set()
+        ensure_table_chain_set(cfg.get("prerouting_priority", -350))
         nft_flush()
         data = urllib.request.urlopen(src, timeout=30).read().decode("utf-8")
         cidrs = [l.strip() for l in data.splitlines() if l.strip() and "/" in l]

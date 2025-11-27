@@ -3,7 +3,12 @@ ports:
     protos: [tcp, udp]
     open: true
     china_policy: block_china
+    whitelist_cidrs: ["203.0.113.0/24"]
+    blacklist_cidrs: ["198.51.100.0/24"]
     container: ""
 china_ip_source: "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt"
 schedule_cron: "0 3 * * *"
 allow_private: true
+whitelist_cidrs: []
+blacklist_cidrs: []
+prerouting_priority: -350
