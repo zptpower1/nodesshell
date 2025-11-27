@@ -6,3 +6,4 @@ ports:
     container: ""
 china_ip_source: "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt"
 schedule_cron: "0 3 * * *"
+allow_private: true

@@ -1,7 +1,7 @@
 import cmd
 from .config import load_config, save_config, DEFAULT_CONFIG_PATH
 from .ufw import status as ufw_status, allow_port, deny_port, allow_docker
-from .nft import ensure_table_chain_set, flush_set as nft_flush, add_elements as nft_add_elements, add_block_rule, add_block_non_china_rule, add_accept_rule, delete_block_rule, list_ours as nft_list
+from .nft import ensure_table_chain_set, flush_set as nft_flush, add_elements as nft_add_elements, add_block_rule, add_block_non_china_rule, add_accept_rule, delete_block_rule, list_ours as nft_list, count_set_elements, flush_policy_chains, delete_table
 from .ipset import ensure_set as ipset_ensure, flush_set as ipset_flush, add_network as ipset_add, list_set as ipset_list
 from .docker_ports import list_published
 from .system import run_cmd
@@ -32,6 +32,7 @@ class CnWallCLI(cmd.Cmd):
     def do_apply(self, arg):
         cfg = load_config()
         ensure_table_chain_set()
+        flush_policy_chains()
         for p in cfg.get("ports", []):
             port = int(p.get("port"))
             protos = p.get("protos")
@@ -66,24 +67,16 @@ class CnWallCLI(cmd.Cmd):
                     add_accept_rule(port, proto, "10.0.0.0/8")
                     add_accept_rule(port, proto, "172.16.0.0/12")
                     add_accept_rule(port, proto, "192.168.0.0/16")
-                    add_block_non_china_rule(port, proto)
+                if count_set_elements() > 0:
+                    for proto in protos:
+                        add_block_non_china_rule(port, proto)
+                else:
+                    print("警告: nft集合为空，已跳过非中国IP拦截规则")
         print("已应用配置")
 
     def do_reset(self, arg):
-        cfg = load_config()
-        for p in cfg.get("ports", []):
-            port = int(p.get("port"))
-            protos = p.get("protos")
-            if not protos:
-                proto_single = p.get("proto")
-                if proto_single:
-                    protos = [proto_single]
-                else:
-                    protos = ["tcp"]
-            for proto in protos:
-                delete_block_rule(port, proto)
-        nft_flush()
-        print("已重置规则")
+        delete_table()
+        print("已删除nft表 inet cnwall")
 
     def do_china_update(self, arg):
         cfg = load_config()

@@ -72,7 +72,7 @@ allow_private: true
 ## 常用命令
 - `status`：打印 UFW、nftables 与 ipset 状态，以及 Docker 发布端口
 - `apply`：按 `config.yaml` 应用端口开放与中国 IP 端口拦截（支持 `protos` 多协议与三态策略）
-- `reset`：删除端口拦截规则并清空 `cnwall_china` 集合
+- `reset`：删除整个 `inet cnwall` 表（含链与集合）
 - `china_update`：下载 China CIDR 列表，写入 `ipset` 与 `nftables` 集合
 - `config_show`：打印当前配置（缺失文件时显示默认值）
 - `config_reset`：将默认配置写入 `firewall/config.yaml`

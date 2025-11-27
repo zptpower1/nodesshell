@@ -27,8 +27,11 @@ def add_elements(elements: list) -> None:
         return
     if not elements:
         return
-    joined = ",".join(elements)
-    run_cmd(["nft", "add", "element", TABLE, TABLE_NAME, SET_NAME, "{", joined, "}"])
+    batch = 200
+    for i in range(0, len(elements), batch):
+        chunk = elements[i : i + batch]
+        joined = ",".join(chunk)
+        run_cmd(["nft", "add", "element", TABLE, TABLE_NAME, SET_NAME, "{", joined, "}"])
 
 def add_block_rule(port: int, proto: str = "tcp") -> None:
     if not available():
@@ -58,7 +61,7 @@ def list_ours() -> str:
         return "nft未安装"
     r = run_cmd(["nft", "list", "table", TABLE, TABLE_NAME])
     if r.returncode != 0:
-        return "未创建nft表或链或集合: inet cnwall/filter, set cnwall_china"
+        return "未创建nft表或链或集合: inet cnwall/filter_input, filter_forward, set cnwall_china"
     return r.stdout or r.stderr
 
 def add_block_non_china_rule(port: int, proto: str = "tcp") -> None:
@@ -66,6 +69,22 @@ def add_block_non_china_rule(port: int, proto: str = "tcp") -> None:
         return
     run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_INPUT, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
     run_cmd(["nft", "add", "rule", TABLE, TABLE_NAME, CHAIN_FORWARD, proto, "dport", str(port), "ip", "saddr", "!=", f"@{SET_NAME}", "counter", "drop"])
+
+def count_set_elements() -> int:
+    if not available():
+        return 0
+    r = run_cmd(["nft", "list", "set", TABLE, TABLE_NAME, SET_NAME])
+    if r.returncode != 0:
+        return 0
+    text = r.stdout
+    if "elements = {" not in text:
+        return 0
+    # naive count by commas; suitable for large sets
+    try:
+        body = text.split("elements = {", 1)[1].split("}", 1)[0]
+        return len([x for x in body.split(",") if x.strip()])
+    except Exception:
+        return 0
 
 def add_accept_rule(port: int, proto: str, cidr: str) -> None:
     if not available():
@@ -88,3 +107,12 @@ def delete_accept_rule(port: int, proto: str, cidr: str) -> None:
                     if idx + 1 < len(parts):
                         handle = parts[idx + 1]
                         run_cmd(["nft", "delete", "rule", TABLE, TABLE_NAME, chain, "handle", handle])
+def flush_policy_chains() -> None:
+    if not available():
+        return
+    run_cmd(["nft", "flush", "chain", TABLE, TABLE_NAME, CHAIN_INPUT])
+    run_cmd(["nft", "flush", "chain", TABLE, TABLE_NAME, CHAIN_FORWARD])
+def delete_table() -> None:
+    if not available():
+        return
+    run_cmd(["nft", "delete", "table", TABLE, TABLE_NAME])
