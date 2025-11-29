@@ -40,6 +40,42 @@ check_network() {
     netstat -an | grep ESTABLISHED | wc -l | xargs echo "当前活动连接数："
 }
 
+# 安装 ufw-docker
+install_ufw_docker() {
+    if command -v ufw-docker >/dev/null 2>&1; then
+        echo "ufw-docker 已安装"
+        return 0
+    fi
+    url="https://raw.githubusercontent.com/chaifeng/ufw-docker/master/ufw-docker"
+    target="/usr/local/bin/ufw-docker"
+    if command -v curl >/dev/null 2>&1; then
+        sudo curl -fsSL -o "$target" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        sudo wget -q -O "$target" "$url"
+    else
+        echo "缺少 curl 或 wget"
+        exit 1
+    fi
+    sudo chmod +x "$target"
+    echo "已安装 ufw-docker 到 $target"
+}
+
+# 检查依赖
+deps() {
+    missing=()
+    for c in ufw nft ipset docker crontab; do
+        if ! command -v "$c" >/dev/null 2>&1; then
+            missing+=("$c")
+        fi
+    done
+    if [ ${#missing[@]} -eq 0 ]; then
+        echo "依赖完整"
+    else
+        echo "缺少依赖: ${missing[*]}"
+        exit 1
+    fi
+}
+
 # 检查服务状态
 service_check() {
     echo "🔍 SS2022 服务状态："
@@ -162,6 +198,12 @@ main() {
         systemctls)
             list_systemctls
             ;;
+        install-ufw-docker)
+            install_ufw_docker
+            ;;
+        deps)
+            deps
+            ;;
         *)
             echo "用法: $0 <command> [args]"
             echo
@@ -175,9 +217,58 @@ main() {
             echo "  logs         检查系统日志"
             echo "  monitor      持续监听系统日志"
             echo "  systemctls   列出所有 systemd 服务"
+            echo "  install-ufw-docker 安装 ufw-docker"
+            echo "  deps              检查依赖 (ufw nft ipset docker crontab)"
             ;;
     esac
 }
 
 # 调用主函数
-main "$@"
+if [ $# -eq 0 ]; then
+  while true; do
+    echo "==== 系统维护菜单 ===="
+    echo "1) 查看端口占用"
+    echo "2) 查看端口监听状态"
+    echo "3) 查看系统资源"
+    echo "4) 查看网络连接"
+    echo "5) 查看服务运行状态(SS2022)"
+    echo "6) 查看系统信息"
+    echo "7) 检查系统日志"
+    echo "8) 持续监听系统日志"
+    echo "9) 列出 systemd 服务"
+    echo "10) 安装 ufw-docker"
+    echo "11) 检查依赖"
+    echo "0) 退出"
+    read -r -p "选择: " choice
+    case "$choice" in
+      1)
+        read -r -p "端口(留空查看全部): " p; check_port "$p" ;;
+      2)
+        read -r -p "端口(留空查看全部): " p; check_listen "$p" ;;
+      3)
+        check_system ;;
+      4)
+        check_network ;;
+      5)
+        service_check ;;
+      6)
+        show_info ;;
+      7)
+        check_logs ;;
+      8)
+        monitor_logs ;;
+      9)
+        list_systemctls ;;
+      10)
+        install_ufw_docker ;;
+      11)
+        deps ;;
+      0)
+        exit 0 ;;
+      *)
+        echo "无效选择" ;;
+    esac
+  done
+else
+  main "$@"
+fi

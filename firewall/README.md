@@ -89,6 +89,20 @@ prerouting_priority: -350
 - `schedule_set`：设置 `crontab` 定时执行 `china_update`
 - `schedule_remove`：移除该定时任务
 
+## 快捷执行
+- 命令行
+  - 初次部署：`python3 -m firewall.main reset && python3 -m firewall.main china_update && python3 -m firewall.main apply`
+  - 更新数据：`python3 -m firewall.main china_update && python3 -m firewall.main apply`
+  - 清理规则：`python3 -m firewall.main reset`
+  - 查看状态：`python3 -m firewall.main status`
+- 菜单脚本
+  - 运行：`bash firewall/firewall.sh`（或 `chmod +x firewall/firewall.sh && ./firewall/firewall.sh`）
+  - 一键初次部署：菜单项 `9`
+  - 一键更新数据：菜单项 `10`
+  - 重置规则：菜单项 `6`
+  - 查看状态：菜单项 `1`
+
+
 ## 工作原理
 - UFW 与 ufw-docker
   - 优先使用 `ufw-docker` 允许容器端口；不存在时回退到 `ufw allow port/proto`
