@@ -110,6 +110,10 @@ main_with_args() {
             base_check
             upgrade_sing_box
             ;;
+        reinstall)
+            base_check
+            service_install
+            ;;
         uninstall)
             remove_command_links  # 卸载时删除软链接
             uninstall_sing_box
@@ -262,6 +266,11 @@ main_with_args() {
         log|logs|tail)
             view_logs
             ;;
+
+        # 防火墙管理命令（内部调用）
+        allow_firewall)
+            allow_firewall
+            ;;
             
         # 帮助信息
         *)
@@ -276,6 +285,7 @@ main_with_args() {
             echo "            - 2022-blake3-aes-256-gcm"
             echo "            - 2022-blake3-chacha20-poly1305"
             echo "  upgrade    升级服务"
+            echo "  reinstall  重装服务(更新Service配置)"
             echo "  uninstall  卸载服务"
             echo
             echo "用户管理命令:"
