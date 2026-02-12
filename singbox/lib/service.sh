@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 generate_service_config() {
     # 获取当前用户名
     local current_user=$(whoami)
+    local script_path="${SCRIPT_DIR}/singbox.sh"
     
     cat << EOF
 [Unit]
@@ -14,6 +15,7 @@ After=network.target nss-lookup.target
 
 [Service]
 Type=simple
+ExecStartPre=+${script_path} allow_firewall
 ExecStart=${SING_BIN} run -c ${CONFIG_PATH}
 Restart=on-failure
 RestartPreventExitStatus=23
@@ -33,6 +35,9 @@ service_install() {
     fi
     # 生成服务配置并写入文件
     generate_service_config > "${SERVICE_FILE}"
+    
+    # 确保脚本具有执行权限（供 ExecStartPre 调用）
+    chmod +x "${SCRIPT_DIR}/singbox.sh"
     
     service_enable
     reload_service
