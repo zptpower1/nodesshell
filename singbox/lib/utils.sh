@@ -85,6 +85,20 @@ function load_env() {
     fi
 }
 
+# 生成 UUID
+generate_uuid() {
+    if [ -x "$SING_BIN" ]; then
+        "$SING_BIN" generate uuid
+    elif command -v uuidgen >/dev/null 2>&1; then
+        uuidgen
+    elif [ -f /proc/sys/kernel/random/uuid ]; then
+        cat /proc/sys/kernel/random/uuid
+    else
+        # Fallback to random string
+        cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1 | sed -e 's/\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)\(.\{12\}\)/\1-\2-\3-\4-\5/'
+    fi
+}
+
 # 生成密钥
 generate_key() {
     local method="$1"
@@ -104,7 +118,7 @@ generate_key() {
             ;;
         *)
             echo "✅ 加密方法: $method，默认使用 UUID 生成密码"
-            uuidgen
+            generate_uuid
             return 0
             ;;
     esac

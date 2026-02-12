@@ -13,7 +13,7 @@ init_users_config() {
 generate_user_config() {
     local name="$1"
     # 生成UUID
-    local uuid=$(uuidgen)
+    local uuid=$(generate_uuid)
     # 生成16字节密钥
     local key_16=$($SING_BIN generate rand 16 --base64)
     # 生成32字节密钥
@@ -159,7 +159,7 @@ user_reset() {
     fi
     
     # 生成新的密钥
-    local uuid=$(uuidgen)
+    local uuid=$(generate_uuid)
     local key_16=$($SING_BIN generate rand 16 --base64)
     local key_32=$($SING_BIN generate rand 32 --base64)
     
