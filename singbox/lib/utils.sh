@@ -6,7 +6,13 @@ CONFIGS_DIR="${SCRIPT_DIR}/configs"
 LOGS_DIR="${SCRIPT_DIR}/logs"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
 
-CONFIG_PATH="${CONFIGS_DIR}/config.json"
+# 配置文件优先级逻辑
+if [ -f "/etc/sing-box/config.json" ]; then
+    CONFIG_PATH="/etc/sing-box/config.json"
+else
+    CONFIG_PATH="${CONFIGS_DIR}/config.json"
+fi
+
 BASE_CONFIG_PATH="${CONFIGS_DIR}/base_config.json"
 USERS_PATH="${CONFIGS_DIR}/users.json"
 LOG_PATH="${LOGS_DIR}/sing-box.log"
@@ -145,12 +151,36 @@ generate_random_port() {
 allow_firewall() {
      # 配置防火墙规则
     if [ -f "${CONFIG_PATH}" ]; then
-        echo "🛡️ 开始批量配置防火墙规则..."
-        local ports=$(jq -r '.inbounds[].listen_port' "${CONFIG_PATH}")
-        for port in $ports; do
+        echo "🛡️ 开始同步防火墙规则..."
+        local config_ports=$(jq -r '.inbounds[].listen_port' "${CONFIG_PATH}")
+        
+        # 1. 开放配置中的端口
+        for port in $config_ports; do
             allow_firewall_port $port
         done
-        echo "🛡️ 批量配置防火墙规则已完成..."
+
+        # 2. 清理不再使用的端口 (仅针对带有 sing-box 标记的端口)
+        if command -v ufw >/dev/null 2>&1; then
+             # 获取所有带有 'sing-box' 注释的已开放端口
+            local ufw_ports=$(ufw status | grep 'sing-box' | awk '{print $1}' | cut -d'/' -f1 | sort -u)
+            
+            for u_port in $ufw_ports; do
+                local keep=false
+                for c_port in $config_ports; do
+                    if [ "$u_port" == "$c_port" ]; then
+                        keep=true
+                        break
+                    fi
+                done
+                
+                if [ "$keep" = false ]; then
+                    echo "🗑️ 端口 $u_port 已不再使用，正在移除..."
+                    delete_firewall_port $u_port
+                fi
+            done
+        fi
+        
+        echo "🛡️ 防火墙规则同步完成..."
     fi
 }
 
@@ -164,8 +194,13 @@ allow_firewall_port() {
     fi
     
     if command -v ufw >/dev/null 2>&1; then
-        echo "   使用 ufw 配置防火墙规则 (端口: ${port})..."
-        ufw allow "${port}"  # ufw 会自动允许 TCP 和 UDP
+        # 检查端口是否已开放且有正确备注
+        if ! ufw status | grep -q "${port}.*sing-box"; then
+            echo "   使用 ufw 配置防火墙规则 (端口: ${port})..."
+            ufw allow "${port}" comment 'sing-box'
+        else
+             echo "   端口 ${port} 已开放 (跳过)"
+        fi
     else
         echo "   使用 iptables 配置防火墙规则 (端口: ${port})..."
         for proto in tcp udp; do
@@ -200,7 +235,12 @@ delete_firewall_port() {
     
     if command -v ufw >/dev/null 2>&1; then
         echo "   使用 ufw 移除防火墙规则 (端口: ${port})..."
-        ufw delete allow "${port}"
+        # 使用正则表达式匹配端口和注释
+        ufw status numbered | grep "${port}.*sing-box" | awk '{print $1}' | sed 's/\[//;s/\]//' | sort -rn | while read rule_num; do
+             yes | ufw delete $rule_num
+        done
+        # 兜底删除（如果没有注释的旧规则）
+        ufw delete allow "${port}" >/dev/null 2>&1 || true
     else
         echo "   使用 iptables 移除防火墙规则 (端口: ${port})..."
         for proto in tcp udp; do
