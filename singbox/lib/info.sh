@@ -66,8 +66,18 @@ generate_client_config() {
             "vless")
                 local uuid=$(echo "$inbound" | jq -r ".users[] | select(.name == \"${name}\") | .uuid")
                 local host=$(echo "$inbound" | jq -r '.tls.reality.handshake.server')
-                local tag=$(echo "$inbound" | jq -r '.tag')  # 获取当前 inbound 的 tag
-                local pbk=$(jq -r ".inbounds[] | select(.tag == \"${tag}\") | .tls.reality.public_key" "${BASE_CONFIG_PATH}")
+                local tag=$(echo "$inbound" | jq -r '.tag')
+                
+                # 优先从当前配置中读取 public_key
+                local pbk=$(echo "$inbound" | jq -r '.tls.reality.public_key')
+                
+                # 如果当前配置中没有，尝试从 base_config 读取 (兼容旧逻辑)
+                if [ -z "$pbk" ] || [ "$pbk" = "null" ]; then
+                     if [ -f "${BASE_CONFIG_PATH}" ]; then
+                        pbk=$(jq -r ".inbounds[] | select(.tag == \"${tag}\") | .tls.reality.public_key" "${BASE_CONFIG_PATH}")
+                     fi
+                fi
+                
                 local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[]')
     
                 if [ -z "${uuid}" ] || [ "${uuid}" = "null" ]; then

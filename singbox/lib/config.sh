@@ -133,7 +133,7 @@ config_sync() {
                                     "uuid": .uuid,
                                     "flow": "xtls-rprx-vision"
                                 }))
-                            } | del(.tls.reality.public_key)  # 移除 public_key 字段
+                            } # | del(.tls.reality.public_key)  # 保留 public_key 字段
                         else . end)
                     ]
                 }
